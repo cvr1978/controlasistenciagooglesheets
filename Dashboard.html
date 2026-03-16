@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Asistencia</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
+
+    nav {
+      background: #1a73e8; color: #fff;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; height: 56px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+    nav .brand { font-size: 18px; font-weight: 700; }
+    nav .nav-links a { color: rgba(255,255,255,.85); text-decoration: none; margin-left: 18px; font-size: 14px; }
+    nav .nav-links a:hover { color: #fff; }
+
+    .container { max-width: 1000px; margin: 30px auto; padding: 0 16px; }
+
+    /* KPI Cards */
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .kpi-card {
+      background: #fff; border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      padding: 20px; text-align: center;
+    }
+    .kpi-icon { font-size: 32px; }
+    .kpi-value { font-size: 36px; font-weight: 800; color: #1a73e8; margin: 6px 0 4px; }
+    .kpi-label { font-size: 13px; color: #666; }
+    .kpi-card.verde .kpi-value { color: #2e7d32; }
+    .kpi-card.naranja .kpi-value { color: #e65100; }
+    .kpi-card.rojo .kpi-value { color: #c62828; }
+
+    /* Card genérico */
+    .card { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.08); margin-bottom: 20px; overflow: hidden; }
+    .card-header {
+      background: #1a73e8; color: #fff;
+      padding: 14px 20px; font-size: 15px; font-weight: 600;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-body { padding: 20px; }
+
+    /* Filtros */
+    .filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .filtros label { font-size: 12px; color: #555; display: block; margin-bottom: 4px; }
+    .filtros input, .filtros select {
+      padding: 8px 12px; border: 2px solid #ddd; border-radius: 8px;
+      font-size: 13px; outline: none;
+    }
+    .filtros input:focus, .filtros select:focus { border-color: #1a73e8; }
+
+    .btn { display: inline-flex; align-items: center; gap: 5px; padding: 9px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-success { background: #2e7d32; color: #fff; }
+    .btn-success:hover { background: #1b5e20; }
+
+    /* Tabla */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      background: #e8f0fe; color: #1a73e8;
+      padding: 10px 14px; text-align: left;
+      font-weight: 700; white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid #f0f4f8; transition: background .15s; }
+    tbody tr:hover { background: #f8f9ff; }
+    tbody td { padding: 10px 14px; vertical-align: middle; }
+
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: 700;
+    }
+    .badge-p { background: #d9ead3; color: #2e7d32; }
+    .badge-t { background: #fff3e0; color: #e65100; }
+
+    /* Barra de progreso */
+    .prog-bar-wrap { background: #e8f0fe; border-radius: 8px; height: 10px; overflow: hidden; margin-top: 6px; }
+    .prog-bar { height: 100%; background: #1a73e8; border-radius: 8px; transition: width .6s ease; }
+
+    .empty-state { text-align: center; color: #aaa; padding: 40px; font-size: 14px; }
+
+    .spinner { border: 3px solid #e8f0fe; border-top: 3px solid #1a73e8; border-radius: 50%; width: 24px; height: 24px; animation: spin .7s linear infinite; margin: 20px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Pestañas */
+    .tabs { display: flex; gap: 0; border-bottom: 2px solid #e8f0fe; margin-bottom: 16px; }
+    .tab-btn {
+      padding: 10px 20px; border: none; background: none; cursor: pointer;
+      font-size: 13px; font-weight: 600; color: #666; border-bottom: 3px solid transparent;
+      transition: all .2s; margin-bottom: -2px;
+    }
+    .tab-btn.active { color: #1a73e8; border-bottom-color: #1a73e8; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Resumen por estudiante */
+    .student-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f4f8; }
+    .student-row:last-child { border-bottom: none; }
+    .stu-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: #1a73e8; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 15px; flex-shrink: 0;
+    }
+    .stu-info { flex: 1; }
+    .stu-nombre { font-size: 14px; font-weight: 600; }
+    .stu-id { font-size: 11px; color: #888; }
+    .stu-prog { width: 140px; }
+    .stu-pct { font-size: 13px; font-weight: 700; color: #1a73e8; white-space: nowrap; }
+
+    @media (max-width: 600px) {
+      .kpi-row { grid-template-columns: repeat(2,1fr); }
+      .filtros { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">📊 Dashboard Asistencia</div>
+  <div class="nav-links">
+    <a href="?">📷 Escáner</a>
+    <a href="?page=estudiantes">👥 Estudiantes</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- ===== KPIs DE HOY ===== -->
+  <div class="kpi-row" id="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-icon">📅</div>
+      <div class="kpi-value" id="kpi-fecha">--</div>
+      <div class="kpi-label">Fecha de hoy</div>
+    </div>
+    <div class="kpi-card verde">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-value" id="kpi-presentes">--</div>
+      <div class="kpi-label">Presentes hoy</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">🕐</div>
+      <div class="kpi-value" id="kpi-puntuales">--</div>
+      <div class="kpi-label">Puntuales</div>
+    </div>
+    <div class="kpi-card naranja">
+      <div class="kpi-icon">⚠️</div>
+      <div class="kpi-value" id="kpi-tarde">--</div>
+      <div class="kpi-label">Con retraso</div>
+    </div>
+    <div class="kpi-card rojo">
+      <div class="kpi-icon">❌</div>
+      <div class="kpi-value" id="kpi-ausentes">--</div>
+      <div class="kpi-label">Ausentes</div>
+    </div>
+  </div>
+
+  <!-- ===== CONTENIDO PRINCIPAL ===== -->
+  <div class="card">
+    <div class="card-header">
+      <span>📋 Registros de Asistencia</span>
+      <button class="btn btn-success" onclick="exportarCSV()">⬇ Exportar CSV</button>
+    </div>
+    <div class="card-body">
+
+      <!-- Pestañas -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="cambiarTab('hoy',this)">Hoy</button>
+        <button class="tab-btn" onclick="cambiarTab('periodo',this)">Por Período</button>
+        <button class="tab-btn" onclick="cambiarTab('estudiantes',this)">Por Estudiante</button>
+      </div>
+
+      <!-- TAB: HOY -->
+      <div class="tab-content active" id="tab-hoy">
+        <div id="tabla-hoy"><div class="spinner"></div></div>
+      </div>
+
+      <!-- TAB: PERIODO -->
+      <div class="tab-content" id="tab-periodo">
+        <div class="filtros" style="margin-bottom:16px;">
+          <div>
+            <label>Fecha inicio</label>
+            <input type="date" id="fi-inicio">
+          </div>
+          <div>
+            <label>Fecha fin</label>
+            <input type="date" id="fi-fin">
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn btn-primary" onclick="buscarPeriodo()">🔍 Buscar</button>
+          </div>
+        </div>
+        <div id="tabla-periodo"><div class="empty-state">Selecciona un rango de fechas y presiona Buscar</div></div>
+      </div>
+
+      <!-- TAB: POR ESTUDIANTE -->
+      <div class="tab-content" id="tab-estudiantes">
+        <div id="resumen-estudiantes"><div class="spinner"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let datosHoy    = [];
+  let datosPeriodo = [];
+  let tabActiva   = 'hoy';
+
+  // ---- INIT ----
+  window.onload = () => {
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('fi-inicio').value = hoy;
+    document.getElementById('fi-fin').value    = hoy;
+
+    google.script.run
+      .withSuccessHandler(renderResumenHoy)
+      .obtenerResumenHoy();
+  };
+
+  // ---- KPIs ----
+  function renderResumenHoy(r) {
+    document.getElementById('kpi-fecha').textContent     = r.fecha;
+    document.getElementById('kpi-presentes').textContent = r.presentes;
+    document.getElementById('kpi-puntuales').textContent = r.puntuales;
+    document.getElementById('kpi-tarde').textContent     = r.tarde;
+    document.getElementById('kpi-ausentes').textContent  = Math.max(0, r.total - r.presentes);
+
+    datosHoy = r.registros;
+    renderTablaHoy(r.registros);
+    renderResumenEstudiantes(r);
+  }
+
+  // ---- TABLA HOY ----
+  function renderTablaHoy(registros) {
+    const cont = document.getElementById('tabla-hoy');
+    if (!registros || registros.length === 0) {
+      cont.innerHTML = '<div class="empty-state">Sin registros para hoy</div>';
+      return;
+    }
+    cont.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Hora</th><th>ID / Código</th><th>Nombre</th>
+              <th>Programa</th><th>Materia</th><th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${registros.map(r => `
+              <tr>
+                <td>${r.hora}</td>
+                <td>${r.id}</td>
+                <td><strong>${r.nombre}</strong></td>
+                <td>${r.programa}</td>
+                <td>${r.materia}</td>
+                <td><span class="badge ${r.obs==='Puntual'?'badge-p':'badge-t'}">${r.obs}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  // ---- BUSCAR PERIODO ----
+  function buscarPeriodo() {
+    const inicio = document.getElementById('fi-inicio').value;
+    const fin    = document.getElementById('fi-fin').value;
+    if (!inicio || !fin) return;
+
+    const cont = document.getElementById('tabla-periodo');
+    cont.innerHTML = '<div class="spinner"></div>';
+
+    google.script.run
+      .withSuccessHandler(registros => {
+        datosPeriodo = registros;
+        renderTablaPeriodo(registros);
+      })
+      .withFailureHandler(() => { cont.innerHTML = '<div class="empty-state">Error al cargar datos</div>'; })
+      .obtenerAsistenciaPorFecha(inicio, fin);
+  }
+
+  function renderTablaPeriodo(registros) {
+    const cont = document.getElementById('tabla-periodo');
+    if (!registros || registros.length === 0) {
+      cont.innerHTML = '<div class="empty-state">Sin registros en ese período</div>';
+      return;
+    }
+    cont.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th><th>Hora</th><th>ID / Código</th><th>Nombre</th>
+              <th>Programa</th><th>Materia</th><th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${registros.map(r => `
+              <tr>
+                <td>${r.fecha}</td>
+                <td>${r.hora}</td>
+                <td>${r.id}</td>
+                <td><strong>${r.nombre}</strong></td>
+                <td>${r.programa}</td>
+                <td>${r.materia}</td>
+                <td><span class="badge ${r.obs==='Puntual'?'badge-p':'badge-t'}">${r.obs}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:12px;color:#888;margin-top:8px;">Total: ${registros.length} registros</p>
+    `;
+  }
+
+  // ---- RESUMEN POR ESTUDIANTE ----
+  function renderResumenEstudiantes(resumen) {
+    const cont = document.getElementById('resumen-estudiantes');
+    if (!resumen || resumen.total === 0) {
+      cont.innerHTML = '<div class="empty-state">No hay estudiantes registrados</div>';
+      return;
+    }
+
+    // Agrupar registros por estudiante (solo los de hoy disponibles en esta vista)
+    const mapa = {};
+    (resumen.registros || []).forEach(r => {
+      mapa[r.id] = { nombre: r.nombre, id: r.id, asistencias: (mapa[r.id]?.asistencias || 0) + 1 };
+    });
+
+    cont.innerHTML = `
+      <p style="font-size:13px;color:#555;margin-bottom:12px;">
+        Tasa de asistencia hoy: <strong>${resumen.total > 0 ? Math.round(resumen.presentes/resumen.total*100) : 0}%</strong>
+        (${resumen.presentes} de ${resumen.total} estudiantes)
+      </p>
+      <div class="prog-bar-wrap" style="margin-bottom:20px;">
+        <div class="prog-bar" style="width:${resumen.total > 0 ? Math.round(resumen.presentes/resumen.total*100) : 0}%"></div>
+      </div>
+      ${Object.values(mapa).map(s => `
+        <div class="student-row">
+          <div class="stu-avatar">${s.nombre.charAt(0).toUpperCase()}</div>
+          <div class="stu-info">
+            <div class="stu-nombre">${s.nombre}</div>
+            <div class="stu-id">${s.id}</div>
+          </div>
+          <span class="badge badge-p">Presente</span>
+        </div>
+      `).join('') || '<div class="empty-state">Sin asistencia hoy</div>'}
+    `;
+  }
+
+  // ---- PESTAÑAS ----
+  function cambiarTab(nombre, btn) {
+    tabActiva = nombre;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + nombre).classList.add('active');
+  }
+
+  // ---- EXPORTAR CSV ----
+  function exportarCSV() {
+    const datos = tabActiva === 'periodo' ? datosPeriodo : datosHoy;
+    if (!datos || datos.length === 0) {
+      alert('No hay datos para exportar.');
+      return;
+    }
+
+    const cabecera = ['Fecha', 'Hora', 'ID', 'Nombre', 'Programa', 'Materia', 'Estado'];
+    const filas = datos.map(r => [
+      r.fecha || new Date().toISOString().split('T')[0],
+      r.hora, r.id, r.nombre, r.programa, r.materia, r.obs
+    ]);
+
+    const csv = [cabecera, ...filas]
+      .map(fila => fila.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `asistencia_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+</script>
+</body>
+</html>

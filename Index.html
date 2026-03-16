@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Asistencia QR</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+    }
+
+    /* ---- NAV ---- */
+    nav {
+      background: #1a73e8;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 56px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+    nav .brand { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    nav .nav-links a {
+      color: rgba(255,255,255,.85);
+      text-decoration: none;
+      margin-left: 18px;
+      font-size: 14px;
+      transition: color .2s;
+    }
+    nav .nav-links a:hover { color: #fff; }
+
+    /* ---- LAYOUT ---- */
+    .container {
+      max-width: 520px;
+      margin: 30px auto;
+      padding: 0 16px;
+    }
+
+    /* ---- CARD ---- */
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.1);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .card-header {
+      background: #1a73e8;
+      color: #fff;
+      padding: 16px 20px;
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-body { padding: 20px; }
+
+    /* ---- SCANNER ---- */
+    #reader {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 3px solid #1a73e8;
+    }
+
+    /* ---- RESULTADO ---- */
+    #resultado {
+      display: none;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-top: 16px;
+      font-size: 15px;
+      animation: fadeIn .4s ease;
+    }
+    #resultado.ok    { background: #d9ead3; border-left: 5px solid #2e7d32; color: #1b5e20; }
+    #resultado.error { background: #fce8e6; border-left: 5px solid #c62828; color: #b71c1c; }
+    #resultado.warn  { background: #fff3e0; border-left: 5px solid #e65100; color: #bf360c; }
+
+    .resultado-icon { font-size: 32px; margin-bottom: 8px; }
+    .resultado-nombre { font-size: 20px; font-weight: 700; margin: 4px 0; }
+    .resultado-detalle { font-size: 13px; opacity: .8; }
+    .resultado-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+    .badge-puntual { background: #2e7d32; color: #fff; }
+    .badge-tarde   { background: #e65100; color: #fff; }
+
+    /* ---- CONTROLES ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all .2s;
+    }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-danger  { background: #ea4335; color: #fff; }
+    .btn-danger:hover  { background: #b71c1c; }
+    .btn-block { width: 100%; justify-content: center; margin-top: 12px; }
+
+    /* ---- MANUAL ---- */
+    .input-group { display: flex; gap: 8px; margin-top: 8px; }
+    .input-group input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .input-group input:focus { border-color: #1a73e8; }
+
+    /* ---- HISTORIAL ---- */
+    .historial-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f4f8;
+    }
+    .historial-item:last-child { border-bottom: none; }
+    .hist-hora {
+      background: #e8f0fe;
+      color: #1a73e8;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 60px;
+      text-align: center;
+    }
+    .hist-nombre { font-size: 14px; font-weight: 600; }
+    .hist-id     { font-size: 12px; color: #666; }
+    .hist-badge  {
+      margin-left: auto;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+    .hist-badge.p { background: #d9ead3; color: #2e7d32; }
+    .hist-badge.t { background: #fff3e0; color: #e65100; }
+
+    /* ---- STATUS ---- */
+    #status-bar {
+      text-align: center;
+      font-size: 13px;
+      color: #666;
+      padding: 8px 0;
+    }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+    .dot.active   { background: #2e7d32; animation: pulse 1.5s infinite; }
+    .dot.inactive { background: #999; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; } 50% { opacity: .4; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .spinner {
+      border: 3px solid #e8f0fe;
+      border-top: 3px solid #1a73e8;
+      border-radius: 50%;
+      width: 22px; height: 22px;
+      animation: spin .7s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state {
+      text-align: center;
+      color: #aaa;
+      font-size: 13px;
+      padding: 20px 0;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">📷 Asistencia QR</div>
+  <div class="nav-links">
+    <a href="?page=dashboard">📊 Dashboard</a>
+    <a href="?page=estudiantes">👥 Estudiantes</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- ===== ESCÁNER ===== -->
+  <div class="card">
+    <div class="card-header">📷 Escáner de QR</div>
+    <div class="card-body">
+      <div id="status-bar">
+        <span class="dot inactive" id="dot"></span>
+        <span id="status-text">Iniciando cámara...</span>
+      </div>
+      <div id="reader"></div>
+
+      <!-- Resultado del escaneo -->
+      <div id="resultado">
+        <div class="resultado-icon" id="res-icon"></div>
+        <div class="resultado-nombre" id="res-nombre"></div>
+        <div class="resultado-detalle" id="res-detalle"></div>
+        <span class="resultado-badge" id="res-badge"></span>
+      </div>
+
+      <button class="btn btn-danger btn-block" id="btn-stop" onclick="detenerEscaner()" style="display:none;">
+        ⏹ Detener escáner
+      </button>
+      <button class="btn btn-primary btn-block" id="btn-start" onclick="iniciarEscaner()">
+        ▶ Iniciar escáner
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== REGISTRO MANUAL ===== -->
+  <div class="card">
+    <div class="card-header">⌨ Registro Manual</div>
+    <div class="card-body">
+      <p style="font-size:13px;color:#555;margin-bottom:4px;">
+        Si el QR no lee correctamente, ingresa el código manualmente:
+      </p>
+      <div class="input-group">
+        <input type="text" id="input-manual" placeholder="Código del estudiante..." onkeydown="if(event.key==='Enter')registrarManual()">
+        <button class="btn btn-primary" onclick="registrarManual()">Registrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HISTORIAL DEL DÍA ===== -->
+  <div class="card">
+    <div class="card-header">📋 Asistencia de Hoy (<span id="cont-presentes">0</span> presentes)</div>
+    <div class="card-body" id="historial-body">
+      <div class="empty-state">Sin registros por ahora</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let html5QrCode = null;
+  let escaneando  = false;
+  let ultimoCodigo = '';
+  let historial    = [];
+
+  // ---- INICIAR ESCÁNER ----
+  function iniciarEscaner() {
+    html5QrCode = new Html5Qrcode('reader');
+    const config = {
+      fps: 10,
+      qrbox: { width: 260, height: 260 },
+      aspectRatio: 1.0
+    };
+
+    Html5Qrcode.getCameras().then(cameras => {
+      if (!cameras || cameras.length === 0) {
+        mostrarEstado(false, 'No se encontró cámara disponible.');
+        return;
+      }
+      // Preferir cámara trasera
+      const camId = cameras.find(c => /back|rear|environment/i.test(c.label))?.id || cameras[cameras.length - 1].id;
+
+      html5QrCode.start(camId, config, onQrSuccess, onQrError)
+        .then(() => {
+          escaneando = true;
+          document.getElementById('dot').className = 'dot active';
+          document.getElementById('status-text').textContent = 'Escáner activo — apunta al QR del carnet';
+          document.getElementById('btn-stop').style.display = '';
+          document.getElementById('btn-start').style.display = 'none';
+        })
+        .catch(err => mostrarEstado(false, 'No se pudo iniciar: ' + err));
+    }).catch(() => mostrarEstado(false, 'Error al acceder a la cámara.'));
+  }
+
+  // ---- DETENER ----
+  function detenerEscaner() {
+    if (html5QrCode && escaneando) {
+      html5QrCode.stop().then(() => {
+        escaneando = false;
+        document.getElementById('dot').className = 'dot inactive';
+        document.getElementById('status-text').textContent = 'Escáner detenido';
+        document.getElementById('btn-stop').style.display = 'none';
+        document.getElementById('btn-start').style.display = '';
+      });
+    }
+  }
+
+  // ---- CUANDO LEE QR ----
+  function onQrSuccess(decodedText) {
+    if (decodedText === ultimoCodigo) return; // evitar doble registro
+    ultimoCodigo = decodedText;
+    setTimeout(() => { ultimoCodigo = ''; }, 4000);
+
+    // Feedback visual inmediato
+    mostrarCargando();
+    procesarCodigo(decodedText);
+  }
+
+  function onQrError() { /* silencioso */ }
+
+  // ---- REGISTRO MANUAL ----
+  function registrarManual() {
+    const codigo = document.getElementById('input-manual').value.trim();
+    if (!codigo) return;
+    mostrarCargando();
+    procesarCodigo(codigo);
+    document.getElementById('input-manual').value = '';
+  }
+
+  // ---- LLAMADA AL SERVIDOR ----
+  function procesarCodigo(codigo) {
+    google.script.run
+      .withSuccessHandler(respuesta => mostrarRespuesta(respuesta))
+      .withFailureHandler(err => mostrarRespuesta({ ok: false, mensaje: 'Error de conexión: ' + err.message }))
+      .registrarAsistencia(codigo);
+  }
+
+  // ---- UI: RESULTADO ----
+  function mostrarCargando() {
+    const div = document.getElementById('resultado');
+    div.className = '';
+    div.style.display = 'block';
+    div.innerHTML = '<div style="text-align:center;padding:12px;"><div class="spinner"></div><br><small>Registrando...</small></div>';
+  }
+
+  function mostrarRespuesta(r) {
+    const div    = document.getElementById('resultado');
+    div.style.display = 'block';
+    div.style.animation = 'none';
+    void div.offsetWidth; // reflow
+    div.style.animation = '';
+
+    if (r.ok) {
+      div.className = 'ok';
+      const badgeClass = r.observacion === 'Puntual' ? 'badge-puntual' : 'badge-tarde';
+      div.innerHTML = `
+        <div class="resultado-icon">✅</div>
+        <div class="resultado-nombre">${r.estudiante.nombre}</div>
+        <div class="resultado-detalle">${r.estudiante.id} · ${r.estudiante.programa}</div>
+        <div class="resultado-detalle">Hora: ${r.hora}</div>
+        <span class="resultado-badge ${badgeClass}">${r.observacion}</span>
+      `;
+      // Agregar al historial local
+      historial.unshift(r);
+      renderHistorial();
+    } else if (r.estudiante) {
+      div.className = 'warn';
+      div.innerHTML = `
+        <div class="resultado-icon">⚠️</div>
+        <div class="resultado-nombre">${r.estudiante.nombre}</div>
+        <div class="resultado-detalle">${r.mensaje}</div>
+      `;
+    } else {
+      div.className = 'error';
+      div.innerHTML = `
+        <div class="resultado-icon">❌</div>
+        <div class="resultado-nombre">No encontrado</div>
+        <div class="resultado-detalle">${r.mensaje}</div>
+      `;
+    }
+
+    // Auto ocultar tras 5 s
+    clearTimeout(window._hideTimeout);
+    window._hideTimeout = setTimeout(() => {
+      div.style.display = 'none';
+    }, 5000);
+  }
+
+  function mostrarEstado(ok, msg) {
+    document.getElementById('status-text').textContent = msg;
+    document.getElementById('dot').className = ok ? 'dot active' : 'dot inactive';
+  }
+
+  // ---- HISTORIAL DEL DÍA (carga inicial) ----
+  function cargarHistorialHoy() {
+    google.script.run
+      .withSuccessHandler(resumen => {
+        document.getElementById('cont-presentes').textContent = resumen.presentes;
+        historial = resumen.registros.map(r => ({
+          ok: true,
+          estudiante: { nombre: r.nombre, id: r.id, programa: r.programa },
+          hora: r.hora,
+          observacion: r.obs
+        }));
+        renderHistorial();
+      })
+      .obtenerResumenHoy();
+  }
+
+  function renderHistorial() {
+    const body = document.getElementById('historial-body');
+    document.getElementById('cont-presentes').textContent = historial.length;
+    if (historial.length === 0) {
+      body.innerHTML = '<div class="empty-state">Sin registros por ahora</div>';
+      return;
+    }
+    body.innerHTML = historial.map(r => `
+      <div class="historial-item">
+        <div class="hist-hora">${r.hora ? r.hora.substring(0,5) : '--:--'}</div>
+        <div>
+          <div class="hist-nombre">${r.estudiante.nombre}</div>
+          <div class="hist-id">${r.estudiante.id}</div>
+        </div>
+        <span class="hist-badge ${r.observacion === 'Puntual' ? 'p' : 't'}">${r.observacion}</span>
+      </div>
+    `).join('');
+  }
+
+  // ---- INIT ----
+  window.onload = () => {
+    cargarHistorialHoy();
+    iniciarEscaner();
+  };
+</script>
+</body>
+</html>

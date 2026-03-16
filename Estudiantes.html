@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Estudiantes</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
+
+    nav {
+      background: #1a73e8; color: #fff;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; height: 56px; box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+    nav .brand { font-size: 18px; font-weight: 700; }
+    nav .nav-links a { color: rgba(255,255,255,.85); text-decoration: none; margin-left: 18px; font-size: 14px; }
+    nav .nav-links a:hover { color: #fff; }
+
+    .container { max-width: 960px; margin: 30px auto; padding: 0 16px; }
+
+    .card { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.08); margin-bottom: 20px; overflow: hidden; }
+    .card-header {
+      background: #1a73e8; color: #fff;
+      padding: 14px 20px; font-size: 15px; font-weight: 600;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-body { padding: 20px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 5px; padding: 9px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-success { background: #2e7d32; color: #fff; }
+    .btn-success:hover { background: #1b5e20; }
+    .btn-danger  { background: #ea4335; color: #fff; }
+    .btn-danger:hover  { background: #b71c1c; }
+    .btn-warning { background: #f9ab00; color: #fff; }
+    .btn-warning:hover { background: #e37400; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+    /* Formulario */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .form-group label { display: block; font-size: 12px; color: #555; font-weight: 600; margin-bottom: 4px; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 10px 12px; border: 2px solid #ddd;
+      border-radius: 8px; font-size: 14px; outline: none; transition: border-color .2s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #1a73e8; }
+    .form-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+    /* Alerta */
+    #alerta {
+      display: none; padding: 12px 16px; border-radius: 8px;
+      font-size: 13px; margin-bottom: 16px; animation: fadeIn .3s ease;
+    }
+    #alerta.ok    { background: #d9ead3; color: #2e7d32; border-left: 4px solid #2e7d32; }
+    #alerta.error { background: #fce8e6; color: #c62828; border-left: 4px solid #c62828; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Búsqueda */
+    .search-bar {
+      display: flex; gap: 8px; margin-bottom: 16px;
+    }
+    .search-bar input {
+      flex: 1; padding: 9px 14px; border: 2px solid #ddd;
+      border-radius: 8px; font-size: 13px; outline: none;
+    }
+    .search-bar input:focus { border-color: #1a73e8; }
+
+    /* Tabla */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { background: #e8f0fe; color: #1a73e8; padding: 10px 14px; text-align: left; font-weight: 700; }
+    tbody tr { border-bottom: 1px solid #f0f4f8; transition: background .15s; }
+    tbody tr:hover { background: #f8f9ff; }
+    tbody td { padding: 10px 14px; vertical-align: middle; }
+
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+    .badge-active   { background: #d9ead3; color: #2e7d32; }
+    .badge-inactive { background: #fce8e6; color: #c62828; }
+
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #1a73e8; color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 13px; margin-right: 8px; vertical-align: middle;
+    }
+
+    .empty-state { text-align: center; color: #aaa; padding: 40px; font-size: 14px; }
+    .spinner { border: 3px solid #e8f0fe; border-top: 3px solid #1a73e8; border-radius: 50%; width: 24px; height: 24px; animation: spin .7s linear infinite; margin: 20px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal { background: #fff; border-radius: 16px; padding: 28px; width: 90%; max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
+    .modal h3 { margin-bottom: 18px; font-size: 17px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+    /* QR info */
+    .qr-info {
+      background: #e8f0fe; border-radius: 10px; padding: 12px 16px;
+      font-size: 12px; color: #1a73e8; margin-top: 8px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">👥 Gestión de Estudiantes</div>
+  <div class="nav-links">
+    <a href="?">📷 Escáner</a>
+    <a href="?page=dashboard">📊 Dashboard</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- ===== FORMULARIO ===== -->
+  <div class="card">
+    <div class="card-header">
+      <span id="form-titulo">➕ Agregar Estudiante</span>
+    </div>
+    <div class="card-body">
+      <div id="alerta"></div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ID / Código del Carnet *</label>
+          <input type="text" id="f-id" placeholder="Ej: 2024001" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Nombre Completo *</label>
+          <input type="text" id="f-nombre" placeholder="Ej: Juan García López">
+        </div>
+        <div class="form-group">
+          <label>Programa / Curso *</label>
+          <input type="text" id="f-programa" placeholder="Ej: Ingeniería de Sistemas">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="f-email" placeholder="correo@institución.edu">
+        </div>
+        <div class="form-group">
+          <label>Estado</label>
+          <select id="f-estado">
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="qr-info">
+        💡 El QR del carnet debe contener únicamente el <strong>ID / Código</strong> del estudiante.
+        Puedes generarlo en <strong>qr-code-generator.com</strong> o una app similar.
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-success" onclick="guardarEstudiante()">💾 Guardar</button>
+        <button class="btn btn-warning" onclick="limpiarFormulario()">🔄 Limpiar</button>
+        <button class="btn btn-danger" id="btn-eliminar" style="display:none;" onclick="confirmarEliminar()">🗑 Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TABLA ===== -->
+  <div class="card">
+    <div class="card-header">
+      <span>📋 Listado de Estudiantes (<span id="cont-total">0</span>)</span>
+      <button class="btn btn-primary btn-sm" onclick="cargarEstudiantes()">🔄 Recargar</button>
+    </div>
+    <div class="card-body">
+      <div class="search-bar">
+        <input type="text" id="busqueda" placeholder="🔍 Buscar por nombre, ID o programa..." oninput="filtrarTabla()">
+      </div>
+      <div class="table-wrap">
+        <div id="tabla-body"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== MODAL CONFIRMACIÓN ELIMINAR ===== -->
+<div class="modal-overlay" id="modal-eliminar">
+  <div class="modal">
+    <h3>⚠️ Confirmar eliminación</h3>
+    <p id="modal-texto" style="font-size:14px;color:#555;"></p>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="ejecutarEliminar()">Sí, eliminar</button>
+      <button class="btn btn-primary" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let estudiantes   = [];
+  let modoEdicion   = false;
+  let idEdicion     = null;
+
+  // ---- CARGAR ----
+  function cargarEstudiantes() {
+    document.getElementById('tabla-body').innerHTML = '<div class="spinner"></div>';
+    google.script.run
+      .withSuccessHandler(data => {
+        estudiantes = data;
+        renderTabla(data);
+      })
+      .withFailureHandler(() => {
+        document.getElementById('tabla-body').innerHTML = '<div class="empty-state">Error al cargar estudiantes</div>';
+      })
+      .obtenerEstudiantes();
+  }
+
+  function renderTabla(data) {
+    document.getElementById('cont-total').textContent = data.length;
+    if (!data || data.length === 0) {
+      document.getElementById('tabla-body').innerHTML = '<div class="empty-state">No hay estudiantes registrados</div>';
+      return;
+    }
+    document.getElementById('tabla-body').innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>ID / Código</th><th>Nombre</th><th>Programa</th><th>Email</th><th>Estado</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map(e => `
+            <tr>
+              <td><strong>${e.id}</strong></td>
+              <td>
+                <span class="avatar">${e.nombre.charAt(0).toUpperCase()}</span>${e.nombre}
+              </td>
+              <td>${e.programa}</td>
+              <td>${e.email || '—'}</td>
+              <td>
+                <span class="badge ${e.estado === 'Activo' ? 'badge-active' : 'badge-inactive'}">${e.estado}</span>
+              </td>
+              <td>
+                <button class="btn btn-warning btn-sm" onclick="editarEstudiante('${escapar(e.id)}')">✏ Editar</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function escapar(s) {
+    return String(s).replace(/'/g, "\\'");
+  }
+
+  // ---- FILTRO ----
+  function filtrarTabla() {
+    const q = document.getElementById('busqueda').value.toLowerCase();
+    const filtrado = estudiantes.filter(e =>
+      e.nombre.toLowerCase().includes(q) ||
+      String(e.id).toLowerCase().includes(q) ||
+      e.programa.toLowerCase().includes(q)
+    );
+    renderTabla(filtrado);
+  }
+
+  // ---- EDITAR ----
+  function editarEstudiante(id) {
+    const e = estudiantes.find(x => String(x.id) === String(id));
+    if (!e) return;
+
+    modoEdicion = true;
+    idEdicion   = id;
+
+    document.getElementById('f-id').value       = e.id;
+    document.getElementById('f-nombre').value   = e.nombre;
+    document.getElementById('f-programa').value = e.programa;
+    document.getElementById('f-email').value    = e.email || '';
+    document.getElementById('f-estado').value   = e.estado;
+
+    document.getElementById('form-titulo').textContent = '✏ Editar Estudiante';
+    document.getElementById('btn-eliminar').style.display = '';
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ---- GUARDAR ----
+  function guardarEstudiante() {
+    const datos = {
+      id:       document.getElementById('f-id').value.trim(),
+      nombre:   document.getElementById('f-nombre').value.trim(),
+      programa: document.getElementById('f-programa').value.trim(),
+      email:    document.getElementById('f-email').value.trim(),
+      estado:   document.getElementById('f-estado').value
+    };
+
+    if (!datos.id || !datos.nombre || !datos.programa) {
+      mostrarAlerta('Completa los campos obligatorios: ID, Nombre y Programa.', false);
+      return;
+    }
+
+    if (modoEdicion) {
+      google.script.run
+        .withSuccessHandler(r => {
+          mostrarAlerta(r.mensaje, r.ok);
+          if (r.ok) { limpiarFormulario(); cargarEstudiantes(); }
+        })
+        .actualizarEstudiante(idEdicion, datos);
+    } else {
+      google.script.run
+        .withSuccessHandler(r => {
+          mostrarAlerta(r.mensaje, r.ok);
+          if (r.ok) { limpiarFormulario(); cargarEstudiantes(); }
+        })
+        .agregarEstudiante(datos);
+    }
+  }
+
+  // ---- ELIMINAR ----
+  function confirmarEliminar() {
+    const nombre = document.getElementById('f-nombre').value;
+    document.getElementById('modal-texto').textContent = `¿Deseas eliminar a ${nombre} (${idEdicion})? Esta acción no se puede deshacer.`;
+    document.getElementById('modal-eliminar').classList.add('active');
+  }
+
+  function ejecutarEliminar() {
+    cerrarModal();
+    google.script.run
+      .withSuccessHandler(r => {
+        mostrarAlerta(r.mensaje, r.ok);
+        if (r.ok) { limpiarFormulario(); cargarEstudiantes(); }
+      })
+      .eliminarEstudiante(idEdicion);
+  }
+
+  function cerrarModal() {
+    document.getElementById('modal-eliminar').classList.remove('active');
+  }
+
+  // ---- LIMPIAR ----
+  function limpiarFormulario() {
+    ['f-id','f-nombre','f-programa','f-email'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f-estado').value = 'Activo';
+    document.getElementById('form-titulo').textContent = '➕ Agregar Estudiante';
+    document.getElementById('btn-eliminar').style.display = 'none';
+    modoEdicion = false;
+    idEdicion   = null;
+  }
+
+  // ---- ALERTA ----
+  function mostrarAlerta(mensaje, ok) {
+    const el = document.getElementById('alerta');
+    el.textContent = mensaje;
+    el.className   = ok ? 'ok' : 'error';
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 4000);
+  }
+
+  // ---- INIT ----
+  window.onload = cargarEstudiantes;
+</script>
+</body>
+</html>
