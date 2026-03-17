@@ -28,7 +28,7 @@ const COL_ASIST_OBS        = 7;
 // ------------------------------------------------------------
 
 function doGet(e) {
-  const page = e.parameter.page || 'scanner';
+  const page = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'scanner';
 
   if (page === 'dashboard') {
     return HtmlService.createTemplateFromFile('Dashboard')
