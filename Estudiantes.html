@@ -118,6 +118,7 @@
   <div class="brand">👥 Gestión de Estudiantes</div>
   <div class="nav-links">
     <a href="?">📷 Escáner</a>
+    <a href="?page=lista">📋 Lista</a>
     <a href="?page=dashboard">📊 Dashboard</a>
   </div>
 </nav>
@@ -155,6 +156,14 @@
             <option value="Activo">Activo</option>
             <option value="Inactivo">Inactivo</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label>Grado</label>
+          <input type="text" id="f-grado" placeholder="Ej: 10, 11, 1er año">
+        </div>
+        <div class="form-group">
+          <label>Sección</label>
+          <input type="text" id="f-seccion" placeholder="Ej: A, B, Matutina">
         </div>
       </div>
 
@@ -230,7 +239,7 @@
       <table>
         <thead>
           <tr>
-            <th>ID / Código</th><th>Nombre</th><th>Programa</th><th>Email</th><th>Estado</th><th>Acciones</th>
+            <th>ID / Código</th><th>Nombre</th><th>Carrera</th><th>Grado</th><th>Sección</th><th>Estado</th><th>Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -240,8 +249,9 @@
               <td>
                 <span class="avatar">${e.nombre.charAt(0).toUpperCase()}</span>${e.nombre}
               </td>
-              <td>${e.programa}</td>
-              <td>${e.email || '—'}</td>
+              <td>${e.programa || '—'}</td>
+              <td>${e.grado || '—'}</td>
+              <td>${e.seccion || '—'}</td>
               <td>
                 <span class="badge ${e.estado === 'Activo' ? 'badge-active' : 'badge-inactive'}">${e.estado}</span>
               </td>
@@ -265,7 +275,9 @@
     const filtrado = estudiantes.filter(e =>
       e.nombre.toLowerCase().includes(q) ||
       String(e.id).toLowerCase().includes(q) ||
-      e.programa.toLowerCase().includes(q)
+      (e.programa || '').toLowerCase().includes(q) ||
+      (e.grado || '').toLowerCase().includes(q) ||
+      (e.seccion || '').toLowerCase().includes(q)
     );
     renderTabla(filtrado);
   }
@@ -283,6 +295,8 @@
     document.getElementById('f-programa').value = e.programa;
     document.getElementById('f-email').value    = e.email || '';
     document.getElementById('f-estado').value   = e.estado;
+    document.getElementById('f-grado').value    = e.grado || '';
+    document.getElementById('f-seccion').value  = e.seccion || '';
 
     document.getElementById('form-titulo').textContent = '✏ Editar Estudiante';
     document.getElementById('btn-eliminar').style.display = '';
@@ -297,7 +311,9 @@
       nombre:   document.getElementById('f-nombre').value.trim(),
       programa: document.getElementById('f-programa').value.trim(),
       email:    document.getElementById('f-email').value.trim(),
-      estado:   document.getElementById('f-estado').value
+      estado:   document.getElementById('f-estado').value,
+      grado:    document.getElementById('f-grado').value.trim(),
+      seccion:  document.getElementById('f-seccion').value.trim()
     };
 
     if (!datos.id || !datos.nombre || !datos.programa) {
@@ -345,7 +361,7 @@
 
   // ---- LIMPIAR ----
   function limpiarFormulario() {
-    ['f-id','f-nombre','f-programa','f-email'].forEach(id => document.getElementById(id).value = '');
+    ['f-id','f-nombre','f-programa','f-email','f-grado','f-seccion'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('f-estado').value = 'Activo';
     document.getElementById('form-titulo').textContent = '➕ Agregar Estudiante';
     document.getElementById('btn-eliminar').style.display = 'none';

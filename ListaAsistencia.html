@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista de Asistencia</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
+
+    nav {
+      background: #1a73e8; color: #fff;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; height: 56px; box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+    nav .brand { font-size: 18px; font-weight: 700; }
+    nav .nav-links a { color: rgba(255,255,255,.85); text-decoration: none; margin-left: 18px; font-size: 14px; }
+    nav .nav-links a:hover { color: #fff; }
+
+    .container { max-width: 900px; margin: 30px auto; padding: 0 16px; }
+
+    .card { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.08); margin-bottom: 20px; overflow: hidden; }
+    .card-header {
+      background: #1a73e8; color: #fff;
+      padding: 14px 20px; font-size: 15px; font-weight: 600;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .card-body { padding: 20px; }
+
+    /* Filtros */
+    .filtros-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+    .form-group select, .form-group input {
+      width: 100%; padding: 9px 12px; border: 2px solid #ddd;
+      border-radius: 8px; font-size: 14px; outline: none; transition: border-color .2s;
+      background: #fff;
+    }
+    .form-group select:focus, .form-group input:focus { border-color: #1a73e8; }
+
+    .btn { display: inline-flex; align-items: center; gap: 5px; padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; transition: all .2s; }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-success { background: #2e7d32; color: #fff; }
+    .btn-success:hover { background: #1b5e20; }
+    .btn-outline { background: #fff; color: #1a73e8; border: 2px solid #1a73e8; }
+    .btn-outline:hover { background: #e8f0fe; }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Barra de acciones de la lista */
+    .lista-toolbar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 0; border-bottom: 2px solid #f0f4f8; margin-bottom: 16px;
+    }
+    .lista-toolbar .spacer { flex: 1; }
+
+    /* Contador de estados */
+    .contadores {
+      display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .cnt {
+      display: flex; align-items: center; gap: 6px;
+      background: #f8f9ff; border-radius: 8px; padding: 6px 12px;
+      font-size: 13px; font-weight: 600;
+    }
+    .cnt .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-p { background: #2e7d32; }
+    .dot-t { background: #e65100; }
+    .dot-a { background: #c62828; }
+    .cnt-val { font-size: 18px; font-weight: 800; color: #1a73e8; }
+
+    /* Tabla de estudiantes */
+    .student-list { display: flex; flex-direction: column; gap: 0; }
+
+    .student-row {
+      display: grid;
+      grid-template-columns: 36px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 8px;
+      border-bottom: 1px solid #f0f4f8;
+      border-radius: 8px;
+      transition: background .15s;
+    }
+    .student-row:hover { background: #f8f9ff; }
+    .student-row:last-child { border-bottom: none; }
+
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #1a73e8; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; flex-shrink: 0;
+    }
+    .avatar.ausente  { background: #c62828; }
+    .avatar.puntual  { background: #2e7d32; }
+    .avatar.tarde    { background: #e65100; }
+
+    .stu-info .stu-nombre { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+    .stu-info .stu-meta   { font-size: 11px; color: #888; margin-top: 2px; }
+
+    /* Radio-like toggle buttons */
+    .estado-toggle { display: flex; border-radius: 8px; overflow: hidden; border: 2px solid #ddd; flex-shrink: 0; }
+    .estado-toggle input[type="radio"] { display: none; }
+    .estado-toggle label {
+      padding: 6px 12px; font-size: 12px; font-weight: 700;
+      cursor: pointer; user-select: none;
+      background: #f8f9ff; color: #888;
+      transition: all .15s; border-right: 1px solid #ddd;
+      white-space: nowrap;
+    }
+    .estado-toggle label:last-of-type { border-right: none; }
+    .estado-toggle input[value="Puntual"]:checked + label  { background: #2e7d32; color: #fff; }
+    .estado-toggle input[value="Tarde"]:checked   + label  { background: #e65100; color: #fff; }
+    .estado-toggle input[value="Ausente"]:checked + label  { background: #c62828; color: #fff; }
+
+    /* Locked row (ya registrado por QR) */
+    .student-row.locked { opacity: .75; }
+    .locked-badge {
+      font-size: 10px; background: #e8f0fe; color: #1a73e8;
+      border-radius: 4px; padding: 2px 6px; font-weight: 700;
+      display: inline-block; margin-left: 6px; vertical-align: middle;
+    }
+
+    /* Alerta */
+    #alerta {
+      display: none; padding: 14px 18px; border-radius: 10px;
+      font-size: 14px; margin-bottom: 16px; animation: fadeIn .3s ease;
+    }
+    #alerta.ok    { background: #d9ead3; color: #2e7d32; border-left: 5px solid #2e7d32; }
+    #alerta.error { background: #fce8e6; color: #c62828; border-left: 5px solid #c62828; }
+
+    .empty-state { text-align: center; color: #aaa; padding: 50px 20px; font-size: 14px; }
+    .spinner { border: 3px solid #e8f0fe; border-top: 3px solid #1a73e8; border-radius: 50%; width: 28px; height: 28px; animation: spin .7s linear infinite; margin: 30px auto; }
+    @keyframes spin  { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 600px) {
+      .filtros-grid { grid-template-columns: 1fr 1fr; }
+      .estado-toggle label { padding: 6px 8px; font-size: 11px; }
+    }
+    @media (max-width: 420px) {
+      .filtros-grid { grid-template-columns: 1fr; }
+      .student-row { grid-template-columns: 32px 1fr; }
+      .estado-toggle { grid-column: 1 / -1; margin-left: 44px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">📋 Lista de Asistencia</div>
+  <div class="nav-links">
+    <a href="?">📷 Escáner</a>
+    <a href="?page=dashboard">📊 Dashboard</a>
+    <a href="?page=estudiantes">👥 Estudiantes</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- ===== FILTROS ===== -->
+  <div class="card">
+    <div class="card-header">🔍 Seleccionar Grupo</div>
+    <div class="card-body">
+      <div class="filtros-grid">
+        <div class="form-group">
+          <label>Carrera / Programa</label>
+          <select id="f-carrera" onchange="sincronizarFiltros()">
+            <option value="Todos">Todos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Grado</label>
+          <select id="f-grado" onchange="sincronizarFiltros()">
+            <option value="Todos">Todos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Sección</label>
+          <select id="f-seccion">
+            <option value="Todos">Todos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Materia</label>
+          <input type="text" id="f-materia" placeholder="Ej: Matemáticas">
+        </div>
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" id="f-fecha">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="cargarLista()">📋 Cargar lista de estudiantes</button>
+    </div>
+  </div>
+
+  <!-- ===== LISTA ===== -->
+  <div class="card" id="card-lista" style="display:none;">
+    <div class="card-header">
+      <span id="lista-titulo">Estudiantes</span>
+      <button class="btn btn-success btn-sm" id="btn-guardar" onclick="guardarAsistencia()" disabled>
+        💾 Guardar asistencia
+      </button>
+    </div>
+    <div class="card-body">
+
+      <div id="alerta"></div>
+
+      <!-- Contadores -->
+      <div class="contadores">
+        <div class="cnt"><span class="dot dot-p"></span><span class="cnt-val" id="cnt-p">0</span> Puntuales</div>
+        <div class="cnt"><span class="dot dot-t"></span><span class="cnt-val" id="cnt-t">0</span> Tardíos</div>
+        <div class="cnt"><span class="dot dot-a"></span><span class="cnt-val" id="cnt-a">0</span> Ausentes</div>
+        <div class="cnt" style="margin-left:auto;">Total: <span class="cnt-val" id="cnt-total">0</span></div>
+      </div>
+
+      <!-- Acciones rápidas -->
+      <div class="lista-toolbar">
+        <button class="btn btn-outline btn-sm" onclick="marcarTodos('Puntual')">✅ Todos presentes</button>
+        <button class="btn btn-outline btn-sm" onclick="marcarTodos('Ausente')">❌ Todos ausentes</button>
+        <div class="spacer"></div>
+        <span style="font-size:12px;color:#888;">
+          <span style="background:#e8f0fe;color:#1a73e8;border-radius:4px;padding:2px 6px;font-weight:700;">QR</span>
+          = ya registrado, no se modifica
+        </span>
+      </div>
+
+      <div id="lista-body"><div class="spinner"></div></div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let estudiantesActuales = [];
+  let filtrosDisponibles  = { carreras: [], grados: [], secciones: [] };
+
+  // ---- INIT ----
+  window.onload = () => {
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('f-fecha').value = hoy;
+
+    google.script.run
+      .withSuccessHandler(data => {
+        filtrosDisponibles = data;
+        poblarSelect('f-carrera',  data.carreras);
+        poblarSelect('f-grado',    data.grados);
+        poblarSelect('f-seccion',  data.secciones);
+      })
+      .obtenerFiltrosDisponibles();
+  };
+
+  function poblarSelect(id, valores) {
+    const sel = document.getElementById(id);
+    const actual = sel.value;
+    // Mantener opción "Todos"
+    sel.innerHTML = '<option value="Todos">Todos</option>';
+    valores.forEach(v => {
+      const o = document.createElement('option');
+      o.value = o.textContent = v;
+      sel.appendChild(o);
+    });
+    if (actual) sel.value = actual;
+  }
+
+  // Sincroniza los filtros dependientes (opcional, para futuras mejoras)
+  function sincronizarFiltros() { /* espacio para filtros encadenados */ }
+
+  // ---- CARGAR LISTA ----
+  function cargarLista() {
+    const carrera = document.getElementById('f-carrera').value;
+    const grado   = document.getElementById('f-grado').value;
+    const seccion = document.getElementById('f-seccion').value;
+    const fecha   = document.getElementById('f-fecha').value;
+    const materia = document.getElementById('f-materia').value.trim();
+
+    if (materia) {
+      // Guardar materia en el input para que se use al guardar
+    }
+
+    document.getElementById('card-lista').style.display = '';
+    document.getElementById('lista-body').innerHTML = '<div class="spinner"></div>';
+    document.getElementById('btn-guardar').disabled = true;
+
+    // Construir título
+    const partes = [carrera !== 'Todos' ? carrera : null, grado !== 'Todos' ? 'Grado ' + grado : null, seccion !== 'Todos' ? 'Sección ' + seccion : null].filter(Boolean);
+    document.getElementById('lista-titulo').textContent =
+      (partes.length ? partes.join(' · ') : 'Todos los estudiantes') + ' — ' + fecha;
+
+    google.script.run
+      .withSuccessHandler(data => {
+        estudiantesActuales = data;
+        renderLista(data);
+        document.getElementById('btn-guardar').disabled = data.length === 0;
+      })
+      .withFailureHandler(() => {
+        document.getElementById('lista-body').innerHTML = '<div class="empty-state">Error al cargar estudiantes</div>';
+      })
+      .obtenerEstudiantesPorGrupo(carrera, grado, seccion, fecha);
+  }
+
+  // ---- RENDER ----
+  function renderLista(data) {
+    if (!data || data.length === 0) {
+      document.getElementById('lista-body').innerHTML =
+        '<div class="empty-state">No se encontraron estudiantes con esos filtros.<br>Verifica que tengan Grado y Sección asignados.</div>';
+      actualizarContadores();
+      return;
+    }
+
+    const html = data.map((e, idx) => {
+      const locked   = e.estadoHoy !== null;
+      const estadoQR = e.estadoHoy || 'Ausente'; // default para nuevos
+
+      return `
+        <div class="student-row ${locked ? 'locked' : ''}" id="row-${idx}">
+          <div class="avatar ${estadoQR.toLowerCase()}" id="av-${idx}">${e.nombre.charAt(0).toUpperCase()}</div>
+          <div class="stu-info">
+            <div class="stu-nombre">
+              ${e.nombre}
+              ${locked ? `<span class="locked-badge">QR</span>` : ''}
+            </div>
+            <div class="stu-meta">${e.id} · ${[e.carrera, e.grado ? 'G'+e.grado : '', e.seccion ? 'Sec.'+e.seccion : ''].filter(Boolean).join(' · ')}</div>
+          </div>
+          <div class="estado-toggle" ${locked ? 'style="pointer-events:none;opacity:.6;"' : ''}>
+            <input type="radio" name="est-${idx}" id="p-${idx}" value="Puntual"
+              ${estadoQR === 'Puntual' ? 'checked' : ''} onchange="onEstadoCambio(${idx})">
+            <label for="p-${idx}">✅ Puntual</label>
+
+            <input type="radio" name="est-${idx}" id="t-${idx}" value="Tarde"
+              ${estadoQR === 'Tarde' ? 'checked' : ''} onchange="onEstadoCambio(${idx})">
+            <label for="t-${idx}">⚠ Tarde</label>
+
+            <input type="radio" name="est-${idx}" id="a-${idx}" value="Ausente"
+              ${estadoQR === 'Ausente' || !locked ? 'checked' : ''} onchange="onEstadoCambio(${idx})">
+            <label for="a-${idx}">❌ Ausente</label>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    document.getElementById('lista-body').innerHTML = `<div class="student-list">${html}</div>`;
+    actualizarContadores();
+  }
+
+  // ---- CAMBIO DE ESTADO ----
+  function onEstadoCambio(idx) {
+    const val  = document.querySelector(`input[name="est-${idx}"]:checked`).value;
+    const av   = document.getElementById('av-' + idx);
+    av.className = 'avatar ' + val.toLowerCase();
+    actualizarContadores();
+  }
+
+  // ---- MARCAR TODOS ----
+  function marcarTodos(estado) {
+    estudiantesActuales.forEach((e, idx) => {
+      if (e.estadoHoy !== null) return; // no tocar los de QR
+      const radio = document.querySelector(`input[name="est-${idx}"][value="${estado}"]`);
+      if (radio) { radio.checked = true; onEstadoCambio(idx); }
+    });
+  }
+
+  // ---- CONTADORES ----
+  function actualizarContadores() {
+    let p = 0, t = 0, a = 0;
+    estudiantesActuales.forEach((e, idx) => {
+      const radio = document.querySelector(`input[name="est-${idx}"]:checked`);
+      if (!radio) return;
+      if (radio.value === 'Puntual') p++;
+      else if (radio.value === 'Tarde') t++;
+      else a++;
+    });
+    document.getElementById('cnt-p').textContent = p;
+    document.getElementById('cnt-t').textContent = t;
+    document.getElementById('cnt-a').textContent = a;
+    document.getElementById('cnt-total').textContent = estudiantesActuales.length;
+  }
+
+  // ---- GUARDAR ----
+  function guardarAsistencia() {
+    const registros = estudiantesActuales.map((e, idx) => {
+      const radio = document.querySelector(`input[name="est-${idx}"]:checked`);
+      return { id: e.id, observacion: radio ? radio.value : 'Ausente' };
+    });
+
+    // Filtrar los que ya estaban registrados (locked) — el servidor los omitirá igual,
+    // pero es más limpio no enviarlos
+    const porGuardar = registros.filter((r, idx) => estudiantesActuales[idx].estadoHoy === null);
+
+    const materia = document.getElementById('f-materia').value.trim() || 'General';
+    const fecha   = document.getElementById('f-fecha').value;
+
+    document.getElementById('btn-guardar').disabled = true;
+    document.getElementById('btn-guardar').textContent = '⏳ Guardando...';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        mostrarAlerta(res.mensaje, res.ok);
+        document.getElementById('btn-guardar').disabled = false;
+        document.getElementById('btn-guardar').textContent = '💾 Guardar asistencia';
+        if (res.ok) cargarLista(); // recargar para mostrar estados actualizados
+      })
+      .withFailureHandler(err => {
+        mostrarAlerta('Error de conexión: ' + err.message, false);
+        document.getElementById('btn-guardar').disabled = false;
+        document.getElementById('btn-guardar').textContent = '💾 Guardar asistencia';
+      })
+      .registrarAsistenciaMasiva(porGuardar, materia, fecha);
+  }
+
+  // ---- ALERTA ----
+  function mostrarAlerta(msg, ok) {
+    const el = document.getElementById('alerta');
+    el.textContent  = msg;
+    el.className    = ok ? 'ok' : 'error';
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 5000);
+  }
+</script>
+</body>
+</html>

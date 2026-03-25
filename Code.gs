@@ -7,21 +7,26 @@ const SHEET_ESTUDIANTES = 'Estudiantes';
 const SHEET_ASISTENCIA  = 'Asistencia';
 const SHEET_CONFIG      = 'Configuracion';
 
-// Columnas hoja Estudiantes: ID | Nombre | Programa | Email | Estado
+// Columnas hoja Estudiantes: ID | Nombre | Carrera | Email | Estado | Grado | Sección
 const COL_EST_ID       = 1;
 const COL_EST_NOMBRE   = 2;
 const COL_EST_PROGRAMA = 3;
 const COL_EST_EMAIL    = 4;
-const COL_EST_ESTADO   = 5;  // Activo / Inactivo
+const COL_EST_ESTADO   = 5;
+const COL_EST_GRADO    = 6;
+const COL_EST_SECCION  = 7;
 
-// Columnas hoja Asistencia: Fecha | Hora | ID_Estudiante | Nombre | Programa | Materia | Observacion
-const COL_ASIST_FECHA      = 1;
-const COL_ASIST_HORA       = 2;
-const COL_ASIST_ID         = 3;
-const COL_ASIST_NOMBRE     = 4;
-const COL_ASIST_PROGRAMA   = 5;
-const COL_ASIST_MATERIA    = 6;
-const COL_ASIST_OBS        = 7;
+// Columnas hoja Asistencia: Fecha | Hora | ID | Nombre | Carrera | Grado | Sección | Materia | Observación
+const COL_ASIST_FECHA    = 1;
+const COL_ASIST_HORA     = 2;
+const COL_ASIST_ID       = 3;
+const COL_ASIST_NOMBRE   = 4;
+const COL_ASIST_PROGRAMA = 5;
+const COL_ASIST_GRADO    = 6;
+const COL_ASIST_SECCION  = 7;
+const COL_ASIST_MATERIA  = 8;
+const COL_ASIST_OBS      = 9;
+const NUM_COLS_ASIST     = 9;
 
 // ------------------------------------------------------------
 // PUNTO DE ENTRADA WEB APP
@@ -44,19 +49,23 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
-  // Página principal: escáner QR
+  if (page === 'lista') {
+    return HtmlService.createTemplateFromFile('ListaAsistencia')
+      .evaluate()
+      .setTitle('Lista de Asistencia')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('Control de Asistencia QR')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// Helper para incluir archivos HTML parciales
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-// Retorna la URL de la web app
 function getWebAppUrl() {
   return ScriptApp.getService().getUrl();
 }
@@ -77,7 +86,7 @@ function inicializarSpreadsheet() {
       ['Institucion', 'Mi Institución Educativa'],
       ['Materia',     'Materia General'],
       ['Docente',     'Nombre del Docente'],
-      ['Tolerancia',  '15'],   // minutos de tolerancia para llegar tarde
+      ['Tolerancia',  '15'],
       ['ColorHeader', '#1a73e8']
     ]);
     sheetConfig.getRange('A1:B1').setFontWeight('bold').setBackground('#1a73e8').setFontColor('#ffffff');
@@ -88,161 +97,246 @@ function inicializarSpreadsheet() {
   let sheetEst = ss.getSheetByName(SHEET_ESTUDIANTES);
   if (!sheetEst) {
     sheetEst = ss.insertSheet(SHEET_ESTUDIANTES);
-    const headers = ['ID / Código', 'Nombre Completo', 'Programa / Curso', 'Email', 'Estado'];
-    sheetEst.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheetEst.getRange(1, 1, 1, headers.length)
-      .setFontWeight('bold')
-      .setBackground('#1a73e8')
-      .setFontColor('#ffffff');
-    sheetEst.setFrozenRows(1);
-    sheetEst.setColumnWidth(1, 120);
-    sheetEst.setColumnWidth(2, 220);
-    sheetEst.setColumnWidth(3, 200);
-    sheetEst.setColumnWidth(4, 220);
-    sheetEst.setColumnWidth(5, 100);
   }
+  // Siempre actualizar encabezados (permite migración)
+  const headersEst = ['ID / Código', 'Nombre Completo', 'Carrera / Programa', 'Email', 'Estado', 'Grado', 'Sección'];
+  sheetEst.getRange(1, 1, 1, headersEst.length).setValues([headersEst]);
+  sheetEst.getRange(1, 1, 1, headersEst.length)
+    .setFontWeight('bold').setBackground('#1a73e8').setFontColor('#ffffff');
+  sheetEst.setFrozenRows(1);
+  [120, 220, 200, 200, 90, 90, 100].forEach((w, i) => sheetEst.setColumnWidth(i + 1, w));
 
   // ---- Hoja Asistencia ----
   let sheetAsist = ss.getSheetByName(SHEET_ASISTENCIA);
   if (!sheetAsist) {
     sheetAsist = ss.insertSheet(SHEET_ASISTENCIA);
-    const headers = ['Fecha', 'Hora', 'ID / Código', 'Nombre Completo', 'Programa / Curso', 'Materia', 'Observación'];
-    sheetAsist.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheetAsist.getRange(1, 1, 1, headers.length)
-      .setFontWeight('bold')
-      .setBackground('#1a73e8')
-      .setFontColor('#ffffff');
-    sheetAsist.setFrozenRows(1);
-    sheetAsist.setColumnWidth(1, 110);
-    sheetAsist.setColumnWidth(2, 90);
-    sheetAsist.setColumnWidth(3, 120);
-    sheetAsist.setColumnWidth(4, 220);
-    sheetAsist.setColumnWidth(5, 200);
-    sheetAsist.setColumnWidth(6, 160);
-    sheetAsist.setColumnWidth(7, 160);
   }
+  const headersAsist = ['Fecha', 'Hora', 'ID / Código', 'Nombre Completo', 'Carrera', 'Grado', 'Sección', 'Materia', 'Observación'];
+  sheetAsist.getRange(1, 1, 1, headersAsist.length).setValues([headersAsist]);
+  sheetAsist.getRange(1, 1, 1, headersAsist.length)
+    .setFontWeight('bold').setBackground('#1a73e8').setFontColor('#ffffff');
+  sheetAsist.setFrozenRows(1);
+  [110, 80, 120, 220, 190, 80, 90, 160, 110].forEach((w, i) => sheetAsist.setColumnWidth(i + 1, w));
 
   SpreadsheetApp.getUi().alert('✅ Spreadsheet inicializado correctamente.');
 }
 
 // ------------------------------------------------------------
-// REGISTRO DE ASISTENCIA (llamado desde la Web App)
+// REGISTRO DE ASISTENCIA POR QR
 // ------------------------------------------------------------
 
-/**
- * Registra la asistencia de un estudiante a partir del contenido del QR.
- * El QR del carnet debe contener el ID/código del estudiante.
- * Retorna un objeto { ok, mensaje, estudiante }
- */
 function registrarAsistencia(codigoQr) {
   try {
-    const ss      = SpreadsheetApp.getActiveSpreadsheet();
-    const sheetE  = ss.getSheetByName(SHEET_ESTUDIANTES);
-    const sheetA  = ss.getSheetByName(SHEET_ASISTENCIA);
-    const config  = obtenerConfiguracion();
+    const ss     = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetE = ss.getSheetByName(SHEET_ESTUDIANTES);
+    const sheetA = ss.getSheetByName(SHEET_ASISTENCIA);
+    const config = obtenerConfiguracion();
 
     if (!sheetE || !sheetA) {
-      return { ok: false, mensaje: 'El spreadsheet no está inicializado. Ejecuta inicializarSpreadsheet().' };
+      return { ok: false, mensaje: 'El spreadsheet no está inicializado.' };
     }
 
-    // Limpiar código QR (trim y uppercase para comparación robusta)
     const codigoLimpio = codigoQr.toString().trim();
+    const est = _buscarEstudiante(sheetE, codigoLimpio);
 
-    // Buscar estudiante
-    const datosEst = sheetE.getDataRange().getValues();
-    let estudianteEncontrado = null;
-
-    for (let i = 1; i < datosEst.length; i++) {
-      const idHoja = datosEst[i][COL_EST_ID - 1].toString().trim();
-      if (idHoja === codigoLimpio) {
-        estudianteEncontrado = {
-          id:       datosEst[i][COL_EST_ID - 1],
-          nombre:   datosEst[i][COL_EST_NOMBRE - 1],
-          programa: datosEst[i][COL_EST_PROGRAMA - 1],
-          email:    datosEst[i][COL_EST_EMAIL - 1],
-          estado:   datosEst[i][COL_EST_ESTADO - 1]
-        };
-        break;
-      }
+    if (!est) {
+      return { ok: false, mensaje: `Código "${codigoLimpio}" no encontrado.` };
+    }
+    if (est.estado.toString().toLowerCase() === 'inactivo') {
+      return { ok: false, mensaje: `${est.nombre} está marcado como Inactivo.` };
     }
 
-    if (!estudianteEncontrado) {
-      return {
-        ok: false,
-        mensaje: `Código "${codigoLimpio}" no encontrado. Verifica que el estudiante esté registrado.`
-      };
+    const ahora  = new Date();
+    const hoyStr = Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+
+    if (_yaRegistroHoy(sheetA, codigoLimpio, hoyStr)) {
+      return { ok: false, mensaje: `${est.nombre} ya tiene asistencia registrada hoy.`, estudiante: est };
     }
 
-    if (estudianteEncontrado.estado.toString().toLowerCase() === 'inactivo') {
-      return {
-        ok: false,
-        mensaje: `El estudiante ${estudianteEncontrado.nombre} está marcado como Inactivo.`
-      };
-    }
+    const tolerancia = parseInt(config['Tolerancia'] || 15);
+    const horaClase  = parseInt(config['HoraClaseH'] || 7) * 60 + parseInt(config['HoraClaseM'] || 0);
+    const horaActual = ahora.getHours() * 60 + ahora.getMinutes();
+    const obs        = horaActual <= horaClase + tolerancia ? 'Puntual' : 'Tarde';
 
-    // Verificar si ya registró asistencia hoy
-    const ahora    = new Date();
-    const hoyStr   = Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    const datosA   = sheetA.getDataRange().getValues();
-    let yaRegistro = false;
+    const fecha   = Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    const hora    = Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'HH:mm:ss');
+    const materia = config['Materia'] || 'General';
 
-    for (let i = 1; i < datosA.length; i++) {
-      const fechaFila = datosA[i][COL_ASIST_FECHA - 1];
-      const idFila    = datosA[i][COL_ASIST_ID - 1].toString().trim();
-      if (idFila === codigoLimpio && fechaFila) {
-        const fechaFilaStr = Utilities.formatDate(new Date(fechaFila), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-        if (fechaFilaStr === hoyStr) {
-          yaRegistro = true;
-          break;
-        }
-      }
-    }
-
-    if (yaRegistro) {
-      return {
-        ok: false,
-        mensaje: `${estudianteEncontrado.nombre} ya tiene asistencia registrada hoy.`,
-        estudiante: estudianteEncontrado
-      };
-    }
-
-    // Determinar observación (puntual / tarde)
-    const horaActual    = ahora.getHours() * 60 + ahora.getMinutes();
-    const toleranciaMin = parseInt(config['Tolerancia'] || 15);
-    // Clase empieza a las 7:00 AM por defecto — ajustable en Config
-    const horaClase     = parseInt(config['HoraClaseH'] || 7) * 60 + parseInt(config['HoraClaseM'] || 0);
-    const observacion   = horaActual <= horaClase + toleranciaMin ? 'Puntual' : 'Tarde';
-
-    // Registrar fila
-    const fecha     = Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    const hora      = Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'HH:mm:ss');
-    const materia   = config['Materia'] || 'General';
-
-    sheetA.appendRow([
-      fecha,
-      hora,
-      estudianteEncontrado.id,
-      estudianteEncontrado.nombre,
-      estudianteEncontrado.programa,
-      materia,
-      observacion
-    ]);
-
-    // Colorear fila según observación
-    const ultimaFila = sheetA.getLastRow();
-    const color = observacion === 'Puntual' ? '#d9ead3' : '#fff2cc';
-    sheetA.getRange(ultimaFila, 1, 1, 7).setBackground(color);
+    _appendAsistencia(sheetA, fecha, hora, est, materia, obs);
 
     return {
       ok: true,
-      mensaje: `✅ Asistencia registrada para ${estudianteEncontrado.nombre} — ${observacion}`,
-      estudiante: estudianteEncontrado,
+      mensaje: `✅ Asistencia registrada para ${est.nombre} — ${obs}`,
+      estudiante: est,
       hora: hora,
-      observacion: observacion
+      observacion: obs
     };
 
   } catch (err) {
     return { ok: false, mensaje: 'Error interno: ' + err.message };
+  }
+}
+
+// ------------------------------------------------------------
+// LISTA DE ASISTENCIA MASIVA (por grupo)
+// ------------------------------------------------------------
+
+/**
+ * Devuelve los valores únicos de Carrera, Grado y Sección para poblar los filtros.
+ */
+function obtenerFiltrosDisponibles() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_ESTUDIANTES);
+  if (!sheet || sheet.getLastRow() < 2) return { carreras: [], grados: [], secciones: [] };
+
+  const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+  const carreras  = new Set();
+  const grados    = new Set();
+  const secciones = new Set();
+
+  datos.forEach(r => {
+    if (r[0] === '') return;
+    if (r[COL_EST_PROGRAMA - 1]) carreras.add(r[COL_EST_PROGRAMA - 1].toString().trim());
+    if (r[COL_EST_GRADO   - 1]) grados.add(r[COL_EST_GRADO   - 1].toString().trim());
+    if (r[COL_EST_SECCION - 1]) secciones.add(r[COL_EST_SECCION - 1].toString().trim());
+  });
+
+  return {
+    carreras:  [...carreras].sort(),
+    grados:    [...grados].sort(),
+    secciones: [...secciones].sort()
+  };
+}
+
+/**
+ * Retorna los estudiantes que coincidan con los filtros,
+ * junto con su estado de asistencia para la fecha indicada.
+ * Filtros vacíos o "Todos" = sin filtrar.
+ */
+function obtenerEstudiantesPorGrupo(carrera, grado, seccion, fecha) {
+  const ss     = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetE = ss.getSheetByName(SHEET_ESTUDIANTES);
+  const sheetA = ss.getSheetByName(SHEET_ASISTENCIA);
+
+  if (!sheetE || sheetE.getLastRow() < 2) return [];
+
+  const fechaBuscar = fecha || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const tz          = Session.getScriptTimeZone();
+
+  // Índice de asistencia del día: id -> observacion
+  const asistHoy = {};
+  if (sheetA && sheetA.getLastRow() > 1) {
+    const datosA = sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues();
+    datosA.forEach(r => {
+      const f = r[COL_ASIST_FECHA - 1];
+      if (!f) return;
+      const fStr = Utilities.formatDate(new Date(f), tz, 'yyyy-MM-dd');
+      if (fStr === fechaBuscar) {
+        asistHoy[r[COL_ASIST_ID - 1].toString().trim()] = r[COL_ASIST_OBS - 1].toString();
+      }
+    });
+  }
+
+  const datosE = sheetE.getRange(2, 1, sheetE.getLastRow() - 1, 7).getValues();
+  const resultado = [];
+
+  datosE.forEach(r => {
+    if (r[0] === '') return;
+    if (r[COL_EST_ESTADO - 1].toString().toLowerCase() === 'inactivo') return;
+
+    const eCarrera  = r[COL_EST_PROGRAMA - 1].toString().trim();
+    const eGrado    = r[COL_EST_GRADO    - 1].toString().trim();
+    const eSeccion  = r[COL_EST_SECCION  - 1].toString().trim();
+
+    if (carrera  && carrera  !== 'Todos' && eCarrera  !== carrera)  return;
+    if (grado    && grado    !== 'Todos' && eGrado    !== grado)    return;
+    if (seccion  && seccion  !== 'Todos' && eSeccion  !== seccion)  return;
+
+    const id = r[COL_EST_ID - 1].toString().trim();
+    resultado.push({
+      id:        id,
+      nombre:    r[COL_EST_NOMBRE   - 1],
+      carrera:   eCarrera,
+      grado:     eGrado,
+      seccion:   eSeccion,
+      email:     r[COL_EST_EMAIL    - 1],
+      estadoHoy: asistHoy[id] || null  // null = sin registro aún
+    });
+  });
+
+  resultado.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  return resultado;
+}
+
+/**
+ * Registra asistencia masiva para un grupo.
+ * registros: [{ id, observacion }]  observacion: 'Puntual' | 'Tarde' | 'Ausente'
+ * Omite estudiantes que ya tienen registro en esa fecha (respeta QR previo).
+ */
+function registrarAsistenciaMasiva(registros, materia, fecha) {
+  try {
+    const ss     = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetE = ss.getSheetByName(SHEET_ESTUDIANTES);
+    const sheetA = ss.getSheetByName(SHEET_ASISTENCIA);
+
+    if (!sheetE || !sheetA) {
+      return { ok: false, mensaje: 'El spreadsheet no está inicializado.' };
+    }
+
+    const tz       = Session.getScriptTimeZone();
+    const fechaUso = fecha || Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+    const horaUso  = Utilities.formatDate(new Date(), tz, 'HH:mm:ss');
+    const materiaUso = materia || obtenerConfiguracion()['Materia'] || 'General';
+
+    // Pre-cargar índice de asistencia existente para esa fecha
+    const yaRegistrados = new Set();
+    if (sheetA.getLastRow() > 1) {
+      const datosA = sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues();
+      datosA.forEach(r => {
+        const f = r[COL_ASIST_FECHA - 1];
+        if (!f) return;
+        const fStr = Utilities.formatDate(new Date(f), tz, 'yyyy-MM-dd');
+        if (fStr === fechaUso) yaRegistrados.add(r[COL_ASIST_ID - 1].toString().trim());
+      });
+    }
+
+    // Índice de estudiantes
+    const mapaEst = {};
+    if (sheetE.getLastRow() > 1) {
+      sheetE.getRange(2, 1, sheetE.getLastRow() - 1, 7).getValues().forEach(r => {
+        if (r[0] !== '') mapaEst[r[0].toString().trim()] = r;
+      });
+    }
+
+    let registrados = 0;
+    let omitidos    = 0;
+
+    registros.forEach(reg => {
+      const id = reg.id.toString().trim();
+      if (yaRegistrados.has(id)) { omitidos++; return; }
+
+      const fila = mapaEst[id];
+      if (!fila) return;
+
+      const est = {
+        id:       fila[COL_EST_ID       - 1],
+        nombre:   fila[COL_EST_NOMBRE   - 1],
+        programa: fila[COL_EST_PROGRAMA - 1],
+        grado:    fila[COL_EST_GRADO    - 1],
+        seccion:  fila[COL_EST_SECCION  - 1]
+      };
+
+      _appendAsistencia(sheetA, fechaUso, horaUso, est, materiaUso, reg.observacion);
+      registrados++;
+    });
+
+    return {
+      ok: true,
+      mensaje: `✅ ${registrados} registros guardados. ${omitidos > 0 ? omitidos + ' ya tenían asistencia y fueron omitidos.' : ''}`
+    };
+
+  } catch (err) {
+    return { ok: false, mensaje: 'Error: ' + err.message };
   }
 }
 
@@ -255,15 +349,16 @@ function obtenerEstudiantes() {
   const sheet = ss.getSheetByName(SHEET_ESTUDIANTES);
   if (!sheet || sheet.getLastRow() < 2) return [];
 
-  const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
-  return datos
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues()
     .filter(r => r[0] !== '')
     .map(r => ({
-      id:       r[COL_EST_ID - 1],
-      nombre:   r[COL_EST_NOMBRE - 1],
+      id:       r[COL_EST_ID       - 1],
+      nombre:   r[COL_EST_NOMBRE   - 1],
       programa: r[COL_EST_PROGRAMA - 1],
-      email:    r[COL_EST_EMAIL - 1],
-      estado:   r[COL_EST_ESTADO - 1]
+      email:    r[COL_EST_EMAIL    - 1],
+      estado:   r[COL_EST_ESTADO   - 1],
+      grado:    r[COL_EST_GRADO    - 1],
+      seccion:  r[COL_EST_SECCION  - 1]
     }));
 }
 
@@ -272,7 +367,6 @@ function agregarEstudiante(datos) {
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_ESTUDIANTES);
 
-    // Validar que el ID no exista
     const existentes = sheet.getDataRange().getValues();
     for (let i = 1; i < existentes.length; i++) {
       if (existentes[i][0].toString().trim() === datos.id.toString().trim()) {
@@ -281,13 +375,10 @@ function agregarEstudiante(datos) {
     }
 
     sheet.appendRow([
-      datos.id,
-      datos.nombre,
-      datos.programa,
-      datos.email || '',
-      datos.estado || 'Activo'
+      datos.id, datos.nombre, datos.programa,
+      datos.email || '', datos.estado || 'Activo',
+      datos.grado || '', datos.seccion || ''
     ]);
-
     return { ok: true, mensaje: `Estudiante ${datos.nombre} agregado correctamente.` };
   } catch (err) {
     return { ok: false, mensaje: 'Error: ' + err.message };
@@ -302,12 +393,10 @@ function actualizarEstudiante(idOriginal, datos) {
 
     for (let i = 1; i < filas.length; i++) {
       if (filas[i][0].toString().trim() === idOriginal.toString().trim()) {
-        sheet.getRange(i + 1, 1, 1, 5).setValues([[
-          datos.id,
-          datos.nombre,
-          datos.programa,
-          datos.email || '',
-          datos.estado || 'Activo'
+        sheet.getRange(i + 1, 1, 1, 7).setValues([[
+          datos.id, datos.nombre, datos.programa,
+          datos.email || '', datos.estado || 'Activo',
+          datos.grado || '', datos.seccion || ''
         ]]);
         return { ok: true, mensaje: 'Estudiante actualizado.' };
       }
@@ -346,40 +435,39 @@ function obtenerResumenHoy() {
   const sheetE = ss.getSheetByName(SHEET_ESTUDIANTES);
 
   const hoyStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-
   const totalEstudiantes = sheetE ? Math.max(0, sheetE.getLastRow() - 1) : 0;
 
   if (!sheetA || sheetA.getLastRow() < 2) {
-    return { fecha: hoyStr, presentes: 0, puntuales: 0, tarde: 0, total: totalEstudiantes, registros: [] };
+    return { fecha: hoyStr, presentes: 0, puntuales: 0, tarde: 0, ausentes: 0, total: totalEstudiantes, registros: [] };
   }
 
-  const datos = sheetA.getDataRange().getValues();
+  const datos = sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues();
   const registrosHoy = [];
 
-  for (let i = 1; i < datos.length; i++) {
-    const fechaFila = datos[i][COL_ASIST_FECHA - 1];
-    if (!fechaFila) continue;
-    const fechaFilaStr = Utilities.formatDate(new Date(fechaFila), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    if (fechaFilaStr === hoyStr) {
+  datos.forEach(r => {
+    const f = r[COL_ASIST_FECHA - 1];
+    if (!f) return;
+    const fStr = Utilities.formatDate(new Date(f), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    if (fStr === hoyStr) {
       registrosHoy.push({
-        hora:      datos[i][COL_ASIST_HORA - 1],
-        id:        datos[i][COL_ASIST_ID - 1],
-        nombre:    datos[i][COL_ASIST_NOMBRE - 1],
-        programa:  datos[i][COL_ASIST_PROGRAMA - 1],
-        materia:   datos[i][COL_ASIST_MATERIA - 1],
-        obs:       datos[i][COL_ASIST_OBS - 1]
+        hora:     r[COL_ASIST_HORA     - 1],
+        id:       r[COL_ASIST_ID       - 1],
+        nombre:   r[COL_ASIST_NOMBRE   - 1],
+        programa: r[COL_ASIST_PROGRAMA - 1],
+        grado:    r[COL_ASIST_GRADO    - 1],
+        seccion:  r[COL_ASIST_SECCION  - 1],
+        materia:  r[COL_ASIST_MATERIA  - 1],
+        obs:      r[COL_ASIST_OBS      - 1]
       });
     }
-  }
-
-  const puntuales = registrosHoy.filter(r => r.obs === 'Puntual').length;
-  const tarde     = registrosHoy.filter(r => r.obs === 'Tarde').length;
+  });
 
   return {
     fecha:     hoyStr,
-    presentes: registrosHoy.length,
-    puntuales: puntuales,
-    tarde:     tarde,
+    presentes: registrosHoy.filter(r => r.obs !== 'Ausente').length,
+    puntuales: registrosHoy.filter(r => r.obs === 'Puntual').length,
+    tarde:     registrosHoy.filter(r => r.obs === 'Tarde').length,
+    ausentes:  registrosHoy.filter(r => r.obs === 'Ausente').length,
     total:     totalEstudiantes,
     registros: registrosHoy
   };
@@ -388,29 +476,29 @@ function obtenerResumenHoy() {
 function obtenerAsistenciaPorFecha(fechaInicio, fechaFin) {
   const ss     = SpreadsheetApp.getActiveSpreadsheet();
   const sheetA = ss.getSheetByName(SHEET_ASISTENCIA);
-
   if (!sheetA || sheetA.getLastRow() < 2) return [];
 
-  const datos     = sheetA.getDataRange().getValues();
-  const tz        = Session.getScriptTimeZone();
+  const tz = Session.getScriptTimeZone();
   const resultado = [];
 
-  for (let i = 1; i < datos.length; i++) {
-    const fechaFila = datos[i][COL_ASIST_FECHA - 1];
-    if (!fechaFila) continue;
-    const fechaFilaStr = Utilities.formatDate(new Date(fechaFila), tz, 'yyyy-MM-dd');
-    if (fechaFilaStr >= fechaInicio && fechaFilaStr <= fechaFin) {
+  sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(r => {
+    const f = r[COL_ASIST_FECHA - 1];
+    if (!f) return;
+    const fStr = Utilities.formatDate(new Date(f), tz, 'yyyy-MM-dd');
+    if (fStr >= fechaInicio && fStr <= fechaFin) {
       resultado.push({
-        fecha:    fechaFilaStr,
-        hora:     datos[i][COL_ASIST_HORA - 1],
-        id:       datos[i][COL_ASIST_ID - 1],
-        nombre:   datos[i][COL_ASIST_NOMBRE - 1],
-        programa: datos[i][COL_ASIST_PROGRAMA - 1],
-        materia:  datos[i][COL_ASIST_MATERIA - 1],
-        obs:      datos[i][COL_ASIST_OBS - 1]
+        fecha:    fStr,
+        hora:     r[COL_ASIST_HORA     - 1],
+        id:       r[COL_ASIST_ID       - 1],
+        nombre:   r[COL_ASIST_NOMBRE   - 1],
+        programa: r[COL_ASIST_PROGRAMA - 1],
+        grado:    r[COL_ASIST_GRADO    - 1],
+        seccion:  r[COL_ASIST_SECCION  - 1],
+        materia:  r[COL_ASIST_MATERIA  - 1],
+        obs:      r[COL_ASIST_OBS      - 1]
       });
     }
-  }
+  });
 
   return resultado;
 }
@@ -424,9 +512,8 @@ function obtenerConfiguracion() {
   const sheet = ss.getSheetByName(SHEET_CONFIG);
   if (!sheet || sheet.getLastRow() < 2) return {};
 
-  const datos  = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
   const config = {};
-  datos.forEach(r => {
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues().forEach(r => {
     if (r[0]) config[r[0]] = r[1];
   });
   return config;
@@ -436,26 +523,65 @@ function guardarConfiguracion(datos) {
   try {
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_CONFIG);
-
-    // Leer config actual y actualizar/agregar claves
     const filas = sheet.getDataRange().getValues();
     const claves = {};
-    for (let i = 1; i < filas.length; i++) {
-      claves[filas[i][0]] = i + 1; // fila en el sheet (1-based)
-    }
+    for (let i = 1; i < filas.length; i++) claves[filas[i][0]] = i + 1;
 
     Object.keys(datos).forEach(clave => {
-      if (claves[clave]) {
-        sheet.getRange(claves[clave], 2).setValue(datos[clave]);
-      } else {
-        sheet.appendRow([clave, datos[clave]]);
-      }
+      if (claves[clave]) sheet.getRange(claves[clave], 2).setValue(datos[clave]);
+      else sheet.appendRow([clave, datos[clave]]);
     });
-
     return { ok: true, mensaje: 'Configuración guardada.' };
   } catch (err) {
     return { ok: false, mensaje: 'Error: ' + err.message };
   }
+}
+
+// ------------------------------------------------------------
+// HELPERS INTERNOS
+// ------------------------------------------------------------
+
+function _buscarEstudiante(sheet, id) {
+  if (!sheet || sheet.getLastRow() < 2) return null;
+  const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+  for (let i = 0; i < datos.length; i++) {
+    if (datos[i][0].toString().trim() === id) {
+      return {
+        id:       datos[i][COL_EST_ID       - 1],
+        nombre:   datos[i][COL_EST_NOMBRE   - 1],
+        programa: datos[i][COL_EST_PROGRAMA - 1],
+        email:    datos[i][COL_EST_EMAIL    - 1],
+        estado:   datos[i][COL_EST_ESTADO   - 1],
+        grado:    datos[i][COL_EST_GRADO    - 1],
+        seccion:  datos[i][COL_EST_SECCION  - 1]
+      };
+    }
+  }
+  return null;
+}
+
+function _yaRegistroHoy(sheet, id, hoyStr) {
+  if (!sheet || sheet.getLastRow() < 2) return false;
+  const tz    = Session.getScriptTimeZone();
+  const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, NUM_COLS_ASIST).getValues();
+  for (let i = 0; i < datos.length; i++) {
+    const f = datos[i][COL_ASIST_FECHA - 1];
+    if (!f) continue;
+    if (datos[i][COL_ASIST_ID - 1].toString().trim() === id &&
+        Utilities.formatDate(new Date(f), tz, 'yyyy-MM-dd') === hoyStr) return true;
+  }
+  return false;
+}
+
+function _appendAsistencia(sheet, fecha, hora, est, materia, obs) {
+  sheet.appendRow([
+    fecha, hora,
+    est.id, est.nombre, est.programa || est.carrera || '',
+    est.grado || '', est.seccion || '',
+    materia, obs
+  ]);
+  const col = obs === 'Puntual' ? '#d9ead3' : obs === 'Tarde' ? '#fff2cc' : '#fce8e6';
+  sheet.getRange(sheet.getLastRow(), 1, 1, NUM_COLS_ASIST).setBackground(col);
 }
 
 // ------------------------------------------------------------
@@ -465,40 +591,29 @@ function guardarConfiguracion(datos) {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('🎓 Asistencia QR')
-    .addItem('▶ Abrir Escáner QR',         'abrirEscaner')
-    .addItem('📊 Ver Dashboard',            'abrirDashboard')
-    .addItem('👥 Gestionar Estudiantes',    'abrirEstudiantes')
+    .addItem('▶ Abrir Escáner QR',          'abrirEscaner')
+    .addItem('📋 Lista de Asistencia',       'abrirLista')
+    .addItem('📊 Ver Dashboard',             'abrirDashboard')
+    .addItem('👥 Gestionar Estudiantes',     'abrirEstudiantes')
     .addSeparator()
-    .addItem('⚙ Inicializar Spreadsheet',  'inicializarSpreadsheet')
-    .addItem('🔗 Obtener URL de la App',    'mostrarUrl')
+    .addItem('⚙ Inicializar Spreadsheet',   'inicializarSpreadsheet')
+    .addItem('🔗 Obtener URL de la App',     'mostrarUrl')
     .addToUi();
 }
 
-function abrirEscaner() {
-  const url  = ScriptApp.getService().getUrl();
+function _abrirPagina(sufijo, titulo) {
+  const url  = ScriptApp.getService().getUrl() + sufijo;
   const html = HtmlService.createHtmlOutput(
     `<script>window.open('${url}','_blank');google.script.host.close();</script>`
   ).setWidth(10).setHeight(10);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Abriendo...');
+  SpreadsheetApp.getUi().showModalDialog(html, titulo);
 }
 
-function abrirDashboard() {
-  const url  = ScriptApp.getService().getUrl() + '?page=dashboard';
-  const html = HtmlService.createHtmlOutput(
-    `<script>window.open('${url}','_blank');google.script.host.close();</script>`
-  ).setWidth(10).setHeight(10);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Abriendo...');
-}
-
-function abrirEstudiantes() {
-  const url  = ScriptApp.getService().getUrl() + '?page=estudiantes';
-  const html = HtmlService.createHtmlOutput(
-    `<script>window.open('${url}','_blank');google.script.host.close();</script>`
-  ).setWidth(10).setHeight(10);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Abriendo...');
-}
+function abrirEscaner()     { _abrirPagina('',                  'Abriendo escáner...'); }
+function abrirLista()       { _abrirPagina('?page=lista',       'Abriendo lista...'); }
+function abrirDashboard()   { _abrirPagina('?page=dashboard',   'Abriendo dashboard...'); }
+function abrirEstudiantes() { _abrirPagina('?page=estudiantes', 'Abriendo estudiantes...'); }
 
 function mostrarUrl() {
-  const url = ScriptApp.getService().getUrl();
-  SpreadsheetApp.getUi().alert('URL de la Web App:\n\n' + url);
+  SpreadsheetApp.getUi().alert('URL de la Web App:\n\n' + ScriptApp.getService().getUrl());
 }
