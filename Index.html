@@ -197,7 +197,7 @@
     .etoggle input[value="Puntual"]:checked + label { background: #2e7d32; color: #fff; }
     .etoggle input[value="Tarde"]:checked   + label { background: #e65100; color: #fff; }
     .etoggle input[value="Ausente"]:checked + label { background: #c62828; color: #fff; }
-    .grow.locked .etoggle { pointer-events: none; opacity: .6; }
+    /* QR label solo informativo, no bloquea el toggle */
 
     .qr-lbl {
       font-size: 10px; background: #e8f0fe; color: #1a73e8;
@@ -375,9 +375,6 @@
           <button class="btn-xs btn-xs-success" onclick="marcarTodosGrupo('Puntual')">✅ Todos presentes</button>
           <button class="btn-xs btn-xs-warn"    onclick="marcarTodosGrupo('Tarde')">⚠ Todos tarde</button>
           <button class="btn-xs btn-xs-danger"  onclick="marcarTodosGrupo('Ausente')">❌ Todos ausentes</button>
-          <span style="font-size:10px;color:#aaa;margin-left:auto;">
-            <span class="qr-lbl">QR</span> ya registrado
-          </span>
         </div>
 
         <div id="mg-body"></div>
@@ -513,13 +510,13 @@
     document.getElementById('mg-body').innerHTML = `
       <div class="glista">
         ${data.map((e, i) => {
-          const locked = e.estadoHoy !== null;
           const estado = e.estadoHoy || 'Ausente';
+          const tieneRegistro = e.estadoHoy !== null;
           return `
-            <div class="grow ${locked ? 'locked' : ''}" id="grow-${i}">
+            <div class="grow" id="grow-${i}">
               <div class="gavatar ${estado.toLowerCase()}" id="gav-${i}">${e.nombre.charAt(0).toUpperCase()}</div>
               <div class="ginfo">
-                <div class="gnombre">${e.nombre}${locked ? '<span class="qr-lbl">QR</span>' : ''}</div>
+                <div class="gnombre">${e.nombre}</div>
                 <div class="gmeta">${e.id} · ${[e.carrera, e.grado ? 'G' + e.grado : '', e.seccion ? 'Sec.' + e.seccion : ''].filter(Boolean).join(' · ')}</div>
               </div>
               <div class="etoggle">
@@ -530,7 +527,7 @@
                   ${estado === 'Tarde' ? 'checked' : ''} onchange="onEstadoGrupoCambio(${i})">
                 <label for="et-${i}">⚠</label>
                 <input type="radio" name="eg-${i}" id="ea-${i}" value="Ausente"
-                  ${estado === 'Ausente' || !e.estadoHoy ? 'checked' : ''} onchange="onEstadoGrupoCambio(${i})">
+                  ${!tieneRegistro || estado === 'Ausente' ? 'checked' : ''} onchange="onEstadoGrupoCambio(${i})">
                 <label for="ea-${i}">❌</label>
               </div>
             </div>`;
@@ -549,7 +546,6 @@
 
   function marcarTodosGrupo(estado) {
     grupoEstudiantes.forEach((e, i) => {
-      if (e.estadoHoy !== null) return;
       const r = document.querySelector(`input[name="eg-${i}"][value="${estado}"]`);
       if (r) { r.checked = true; onEstadoGrupoCambio(i); }
     });
@@ -571,13 +567,10 @@
   }
 
   function guardarListaGrupo() {
-    const registros = grupoEstudiantes
-      .filter((e, i) => e.estadoHoy === null)  // omitir ya registrados por QR
-      .map((e, _) => {
-        const idx = grupoEstudiantes.indexOf(e);
-        const r   = document.querySelector(`input[name="eg-${idx}"]:checked`);
-        return { id: e.id, observacion: r ? r.value : 'Ausente' };
-      });
+    const registros = grupoEstudiantes.map((e, i) => {
+      const r = document.querySelector(`input[name="eg-${i}"]:checked`);
+      return { id: e.id, observacion: r ? r.value : 'Ausente' };
+    });
 
     const materia = document.getElementById('mg-materia').value.trim() || 'General';
     const fecha   = new Date().toISOString().split('T')[0];

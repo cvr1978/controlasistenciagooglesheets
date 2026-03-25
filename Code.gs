@@ -269,9 +269,9 @@ function obtenerEstudiantesPorGrupo(carrera, grado, seccion, fecha) {
 }
 
 /**
- * Registra asistencia masiva para un grupo.
+ * Registra o ACTUALIZA la asistencia masiva para un grupo.
  * registros: [{ id, observacion }]  observacion: 'Puntual' | 'Tarde' | 'Ausente'
- * Omite estudiantes que ya tienen registro en esa fecha (respeta QR previo).
+ * Si el estudiante ya tiene registro en esa fecha, actualiza su observación.
  */
 function registrarAsistenciaMasiva(registros, materia, fecha) {
   try {
@@ -283,20 +283,22 @@ function registrarAsistenciaMasiva(registros, materia, fecha) {
       return { ok: false, mensaje: 'El spreadsheet no está inicializado.' };
     }
 
-    const tz       = Session.getScriptTimeZone();
-    const fechaUso = fecha || Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
-    const horaUso  = Utilities.formatDate(new Date(), tz, 'HH:mm:ss');
+    const tz         = Session.getScriptTimeZone();
+    const fechaUso   = fecha || Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+    const horaUso    = Utilities.formatDate(new Date(), tz, 'HH:mm:ss');
     const materiaUso = materia || obtenerConfiguracion()['Materia'] || 'General';
 
-    // Pre-cargar índice de asistencia existente para esa fecha
-    const yaRegistrados = new Set();
+    // Construir mapa: id -> número de fila en sheetA (1-based) para esa fecha
+    const filaExistente = {};
     if (sheetA.getLastRow() > 1) {
       const datosA = sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues();
-      datosA.forEach(r => {
+      datosA.forEach((r, idx) => {
         const f = r[COL_ASIST_FECHA - 1];
         if (!f) return;
         const fStr = Utilities.formatDate(new Date(f), tz, 'yyyy-MM-dd');
-        if (fStr === fechaUso) yaRegistrados.add(r[COL_ASIST_ID - 1].toString().trim());
+        if (fStr === fechaUso) {
+          filaExistente[r[COL_ASIST_ID - 1].toString().trim()] = idx + 2; // +2: cabecera + índice base-0
+        }
       });
     }
 
@@ -308,13 +310,25 @@ function registrarAsistenciaMasiva(registros, materia, fecha) {
       });
     }
 
-    let registrados = 0;
-    let omitidos    = 0;
+    let nuevos      = 0;
+    let actualizados = 0;
 
     registros.forEach(reg => {
-      const id = reg.id.toString().trim();
-      if (yaRegistrados.has(id)) { omitidos++; return; }
+      const id  = reg.id.toString().trim();
+      const obs = reg.observacion || 'Ausente';
+      const color = obs === 'Puntual' ? '#d9ead3' : obs === 'Tarde' ? '#fff2cc' : '#fce8e6';
 
+      if (filaExistente[id]) {
+        // Actualizar observación (columna 9) y materia (columna 8) en la fila existente
+        const fila = filaExistente[id];
+        sheetA.getRange(fila, COL_ASIST_MATERIA).setValue(materiaUso);
+        sheetA.getRange(fila, COL_ASIST_OBS).setValue(obs);
+        sheetA.getRange(fila, 1, 1, NUM_COLS_ASIST).setBackground(color);
+        actualizados++;
+        return;
+      }
+
+      // Insertar nuevo registro
       const fila = mapaEst[id];
       if (!fila) return;
 
@@ -326,13 +340,13 @@ function registrarAsistenciaMasiva(registros, materia, fecha) {
         seccion:  fila[COL_EST_SECCION  - 1]
       };
 
-      _appendAsistencia(sheetA, fechaUso, horaUso, est, materiaUso, reg.observacion);
-      registrados++;
+      _appendAsistencia(sheetA, fechaUso, horaUso, est, materiaUso, obs);
+      nuevos++;
     });
 
     return {
       ok: true,
-      mensaje: `✅ ${registrados} registros guardados. ${omitidos > 0 ? omitidos + ' ya tenían asistencia y fueron omitidos.' : ''}`
+      mensaje: `✅ Asistencia guardada: ${nuevos} nuevos, ${actualizados} actualizados.`
     };
 
   } catch (err) {

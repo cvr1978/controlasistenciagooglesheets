@@ -222,12 +222,9 @@
       <!-- Acciones rápidas -->
       <div class="lista-toolbar">
         <button class="btn btn-outline btn-sm" onclick="marcarTodos('Puntual')">✅ Todos presentes</button>
+        <button class="btn btn-outline btn-sm" onclick="marcarTodos('Tarde')">⚠ Todos tarde</button>
         <button class="btn btn-outline btn-sm" onclick="marcarTodos('Ausente')">❌ Todos ausentes</button>
         <div class="spacer"></div>
-        <span style="font-size:12px;color:#888;">
-          <span style="background:#e8f0fe;color:#1a73e8;border-radius:4px;padding:2px 6px;font-weight:700;">QR</span>
-          = ya registrado, no se modifica
-        </span>
       </div>
 
       <div id="lista-body"><div class="spinner"></div></div>
@@ -315,30 +312,26 @@
     }
 
     const html = data.map((e, idx) => {
-      const locked   = e.estadoHoy !== null;
-      const estadoQR = e.estadoHoy || 'Ausente'; // default para nuevos
+      const estado = e.estadoHoy || 'Ausente';
 
       return `
-        <div class="student-row ${locked ? 'locked' : ''}" id="row-${idx}">
-          <div class="avatar ${estadoQR.toLowerCase()}" id="av-${idx}">${e.nombre.charAt(0).toUpperCase()}</div>
+        <div class="student-row" id="row-${idx}">
+          <div class="avatar ${estado.toLowerCase()}" id="av-${idx}">${e.nombre.charAt(0).toUpperCase()}</div>
           <div class="stu-info">
-            <div class="stu-nombre">
-              ${e.nombre}
-              ${locked ? `<span class="locked-badge">QR</span>` : ''}
-            </div>
+            <div class="stu-nombre">${e.nombre}</div>
             <div class="stu-meta">${e.id} · ${[e.carrera, e.grado ? 'G'+e.grado : '', e.seccion ? 'Sec.'+e.seccion : ''].filter(Boolean).join(' · ')}</div>
           </div>
-          <div class="estado-toggle" ${locked ? 'style="pointer-events:none;opacity:.6;"' : ''}>
+          <div class="estado-toggle">
             <input type="radio" name="est-${idx}" id="p-${idx}" value="Puntual"
-              ${estadoQR === 'Puntual' ? 'checked' : ''} onchange="onEstadoCambio(${idx})">
+              ${estado === 'Puntual' ? 'checked' : ''} onchange="onEstadoCambio(${idx})">
             <label for="p-${idx}">✅ Puntual</label>
 
             <input type="radio" name="est-${idx}" id="t-${idx}" value="Tarde"
-              ${estadoQR === 'Tarde' ? 'checked' : ''} onchange="onEstadoCambio(${idx})">
+              ${estado === 'Tarde' ? 'checked' : ''} onchange="onEstadoCambio(${idx})">
             <label for="t-${idx}">⚠ Tarde</label>
 
             <input type="radio" name="est-${idx}" id="a-${idx}" value="Ausente"
-              ${estadoQR === 'Ausente' || !locked ? 'checked' : ''} onchange="onEstadoCambio(${idx})">
+              ${estado === 'Ausente' ? 'checked' : ''} onchange="onEstadoCambio(${idx})">
             <label for="a-${idx}">❌ Ausente</label>
           </div>
         </div>
@@ -360,7 +353,6 @@
   // ---- MARCAR TODOS ----
   function marcarTodos(estado) {
     estudiantesActuales.forEach((e, idx) => {
-      if (e.estadoHoy !== null) return; // no tocar los de QR
       const radio = document.querySelector(`input[name="est-${idx}"][value="${estado}"]`);
       if (radio) { radio.checked = true; onEstadoCambio(idx); }
     });
@@ -389,10 +381,6 @@
       return { id: e.id, observacion: radio ? radio.value : 'Ausente' };
     });
 
-    // Filtrar los que ya estaban registrados (locked) — el servidor los omitirá igual,
-    // pero es más limpio no enviarlos
-    const porGuardar = registros.filter((r, idx) => estudiantesActuales[idx].estadoHoy === null);
-
     const materia = document.getElementById('f-materia').value.trim() || 'General';
     const fecha   = document.getElementById('f-fecha').value;
 
@@ -404,14 +392,14 @@
         mostrarAlerta(res.mensaje, res.ok);
         document.getElementById('btn-guardar').disabled = false;
         document.getElementById('btn-guardar').textContent = '💾 Guardar asistencia';
-        if (res.ok) cargarLista(); // recargar para mostrar estados actualizados
+        if (res.ok) cargarLista();
       })
       .withFailureHandler(err => {
         mostrarAlerta('Error de conexión: ' + err.message, false);
         document.getElementById('btn-guardar').disabled = false;
         document.getElementById('btn-guardar').textContent = '💾 Guardar asistencia';
       })
-      .registrarAsistenciaMasiva(porGuardar, materia, fecha);
+      .registrarAsistenciaMasiva(registros, materia, fecha);
   }
 
   // ---- ALERTA ----
