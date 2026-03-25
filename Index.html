@@ -481,7 +481,7 @@
     const carrera = document.getElementById('mg-carrera').value;
     const grado   = document.getElementById('mg-grado').value;
     const seccion = document.getElementById('mg-seccion').value;
-    const fecha   = new Date().toISOString().split('T')[0];
+    const fecha   = null; // el servidor usa su timezone local
 
     document.getElementById('mg-lista').style.display = '';
     document.getElementById('mg-body').innerHTML = '<div style="text-align:center;padding:16px;"><div class="spinner"></div></div>';
@@ -573,7 +573,7 @@
     });
 
     const materia = document.getElementById('mg-materia').value.trim() || 'General';
-    const fecha   = new Date().toISOString().split('T')[0];
+    const fecha   = null; // el servidor usa su timezone local
 
     document.getElementById('btn-guardar-grupo').disabled = true;
     document.getElementById('btn-guardar-grupo').textContent = '⏳ Guardando...';

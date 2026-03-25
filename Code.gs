@@ -230,7 +230,7 @@ function obtenerEstudiantesPorGrupo(carrera, grado, seccion, fecha) {
     datosA.forEach(r => {
       const f = r[COL_ASIST_FECHA - 1];
       if (!f) return;
-      const fStr = Utilities.formatDate(new Date(f), tz, 'yyyy-MM-dd');
+      const fStr = _toDateStr(f);
       if (fStr === fechaBuscar) {
         asistHoy[r[COL_ASIST_ID - 1].toString().trim()] = r[COL_ASIST_OBS - 1].toString();
       }
@@ -295,7 +295,7 @@ function registrarAsistenciaMasiva(registros, materia, fecha) {
       datosA.forEach((r, idx) => {
         const f = r[COL_ASIST_FECHA - 1];
         if (!f) return;
-        const fStr = Utilities.formatDate(new Date(f), tz, 'yyyy-MM-dd');
+        const fStr = _toDateStr(f);
         if (fStr === fechaUso) {
           filaExistente[r[COL_ASIST_ID - 1].toString().trim()] = idx + 2; // +2: cabecera + índice base-0
         }
@@ -461,7 +461,7 @@ function obtenerResumenHoy() {
   datos.forEach(r => {
     const f = r[COL_ASIST_FECHA - 1];
     if (!f) return;
-    const fStr = Utilities.formatDate(new Date(f), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    const fStr = _toDateStr(f);
     if (fStr === hoyStr) {
       registrosHoy.push({
         hora:     r[COL_ASIST_HORA     - 1],
@@ -498,7 +498,7 @@ function obtenerAsistenciaPorFecha(fechaInicio, fechaFin) {
   sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(r => {
     const f = r[COL_ASIST_FECHA - 1];
     if (!f) return;
-    const fStr = Utilities.formatDate(new Date(f), tz, 'yyyy-MM-dd');
+    const fStr = _toDateStr(f);
     if (fStr >= fechaInicio && fStr <= fechaFin) {
       resultado.push({
         fecha:    fStr,
@@ -555,6 +555,20 @@ function guardarConfiguracion(datos) {
 // HELPERS INTERNOS
 // ------------------------------------------------------------
 
+/**
+ * Convierte un valor de celda de fecha (Date object o string) a 'yyyy-MM-dd'
+ * usando el timezone del script.
+ * Evita el bug de new Date("2026-03-25") que parsea como UTC y da el día anterior.
+ */
+function _toDateStr(f) {
+  if (!f) return '';
+  if (f instanceof Date) {
+    return Utilities.formatDate(f, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  // Es string — tomar solo los primeros 10 caracteres ("2026-03-25")
+  return f.toString().substring(0, 10);
+}
+
 function _buscarEstudiante(sheet, id) {
   if (!sheet || sheet.getLastRow() < 2) return null;
   const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
@@ -582,7 +596,7 @@ function _yaRegistroHoy(sheet, id, hoyStr) {
     const f = datos[i][COL_ASIST_FECHA - 1];
     if (!f) continue;
     if (datos[i][COL_ASIST_ID - 1].toString().trim() === id &&
-        Utilities.formatDate(new Date(f), tz, 'yyyy-MM-dd') === hoyStr) return true;
+        _toDateStr(f) === hoyStr) return true;
   }
   return false;
 }
