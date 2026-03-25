@@ -37,7 +37,7 @@
 
     /* ---- LAYOUT ---- */
     .container {
-      max-width: 520px;
+      max-width: 660px;
       margin: 30px auto;
       padding: 0 16px;
     }
@@ -58,6 +58,7 @@
       font-weight: 600;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 8px;
     }
     .card-body { padding: 20px; }
@@ -116,18 +117,104 @@
     .btn-danger:hover  { background: #b71c1c; }
     .btn-block { width: 100%; justify-content: center; margin-top: 12px; }
 
-    /* ---- MANUAL ---- */
-    .input-group { display: flex; gap: 8px; margin-top: 8px; }
-    .input-group input {
-      flex: 1;
-      padding: 10px 14px;
-      border: 2px solid #ddd;
-      border-radius: 8px;
-      font-size: 14px;
-      outline: none;
-      transition: border-color .2s;
+    /* ---- MANUAL / GRUPO ---- */
+    .filtros-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
     }
-    .input-group input:focus { border-color: #1a73e8; }
+    .fg label { display: block; font-size: 11px; font-weight: 700; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
+    .fg select, .fg input {
+      width: 100%; padding: 9px 10px; border: 2px solid #ddd;
+      border-radius: 8px; font-size: 13px; outline: none;
+      transition: border-color .2s; background: #fff;
+    }
+    .fg select:focus, .fg input:focus { border-color: #1a73e8; }
+
+    /* Contadores mini */
+    .mini-contadores {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .mini-cnt {
+      display: flex; align-items: center; gap: 5px;
+      background: #f8f9ff; border-radius: 6px; padding: 4px 10px;
+      font-size: 12px; font-weight: 700;
+    }
+    .cdot { width: 8px; height: 8px; border-radius: 50%; }
+    .cdot-p { background: #2e7d32; }
+    .cdot-t { background: #e65100; }
+    .cdot-a { background: #c62828; }
+    .mini-val { color: #1a73e8; font-size: 15px; font-weight: 800; }
+
+    /* Toolbar rápida */
+    .quick-bar {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      padding: 8px 0; border-bottom: 1px solid #f0f4f8; margin-bottom: 12px;
+    }
+    .btn-xs { padding: 5px 10px; font-size: 11px; font-weight: 700; border-radius: 6px; border: none; cursor: pointer; }
+    .btn-xs-success { background: #d9ead3; color: #2e7d32; }
+    .btn-xs-danger  { background: #fce8e6; color: #c62828; }
+    .btn-xs-warn    { background: #fff3e0; color: #e65100; }
+
+    /* Fila de estudiante en lista grupo */
+    .glista { display: flex; flex-direction: column; gap: 0; }
+    .grow {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 6px;
+      border-bottom: 1px solid #f0f4f8;
+      border-radius: 8px;
+      transition: background .15s;
+    }
+    .grow:hover { background: #f8f9ff; }
+    .grow:last-child { border-bottom: none; }
+
+    .gavatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      color: #fff; display: flex; align-items: center;
+      justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0;
+    }
+    .gavatar.puntual { background: #2e7d32; }
+    .gavatar.tarde   { background: #e65100; }
+    .gavatar.ausente { background: #c62828; }
+    .gavatar.nuevo   { background: #1a73e8; }
+
+    .ginfo .gnombre { font-size: 13px; font-weight: 700; }
+    .ginfo .gmeta   { font-size: 11px; color: #888; }
+
+    /* Toggle estado */
+    .etoggle { display: flex; border-radius: 7px; overflow: hidden; border: 2px solid #ddd; flex-shrink: 0; }
+    .etoggle input[type="radio"] { display: none; }
+    .etoggle label {
+      padding: 5px 10px; font-size: 11px; font-weight: 700;
+      cursor: pointer; background: #f8f9ff; color: #999;
+      transition: all .15s; border-right: 1px solid #ddd; white-space: nowrap;
+    }
+    .etoggle label:last-of-type { border-right: none; }
+    .etoggle input[value="Puntual"]:checked + label { background: #2e7d32; color: #fff; }
+    .etoggle input[value="Tarde"]:checked   + label { background: #e65100; color: #fff; }
+    .etoggle input[value="Ausente"]:checked + label { background: #c62828; color: #fff; }
+    .grow.locked .etoggle { pointer-events: none; opacity: .6; }
+
+    .qr-lbl {
+      font-size: 10px; background: #e8f0fe; color: #1a73e8;
+      border-radius: 4px; padding: 1px 5px; font-weight: 700; margin-left: 5px;
+    }
+
+    /* Alerta en lista grupo */
+    #alerta-grupo {
+      display: none; padding: 10px 14px; border-radius: 8px;
+      font-size: 13px; margin-bottom: 12px;
+    }
+    #alerta-grupo.ok    { background: #d9ead3; color: #2e7d32; border-left: 4px solid #2e7d32; }
+    #alerta-grupo.error { background: #fce8e6; color: #c62828; border-left: 4px solid #c62828; }
+
+    .btn-success { background: #2e7d32; color: #fff; }
+    .btn-success:hover { background: #1b5e20; }
+    .btn-sm { padding: 7px 14px; font-size: 13px; }
 
     /* ---- HISTORIAL ---- */
     .historial-item {
@@ -238,17 +325,64 @@
     </div>
   </div>
 
-  <!-- ===== REGISTRO MANUAL ===== -->
+  <!-- ===== REGISTRO POR GRUPO ===== -->
   <div class="card">
-    <div class="card-header">⌨ Registro Manual</div>
+    <div class="card-header">
+      <span>⌨ Registro Manual por Grupo</span>
+      <button class="btn btn-success btn-sm" id="btn-guardar-grupo" onclick="guardarListaGrupo()" style="display:none;">
+        💾 Guardar
+      </button>
+    </div>
     <div class="card-body">
-      <p style="font-size:13px;color:#555;margin-bottom:4px;">
-        Si el QR no lee correctamente, ingresa el código manualmente:
-      </p>
-      <div class="input-group">
-        <input type="text" id="input-manual" placeholder="Código del estudiante..." onkeydown="if(event.key==='Enter')registrarManual()">
-        <button class="btn btn-primary" onclick="registrarManual()">Registrar</button>
+
+      <!-- Filtros -->
+      <div class="filtros-grid">
+        <div class="fg">
+          <label>Carrera</label>
+          <select id="mg-carrera"><option value="Todos">Todos</option></select>
+        </div>
+        <div class="fg">
+          <label>Grado</label>
+          <select id="mg-grado"><option value="Todos">Todos</option></select>
+        </div>
+        <div class="fg">
+          <label>Sección</label>
+          <select id="mg-seccion"><option value="Todos">Todos</option></select>
+        </div>
+        <div class="fg">
+          <label>Materia</label>
+          <input type="text" id="mg-materia" placeholder="Ej: Matemáticas">
+        </div>
       </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="cargarListaGrupo()">
+        📋 Cargar estudiantes
+      </button>
+
+      <!-- Lista resultante -->
+      <div id="mg-lista" style="margin-top:16px;display:none;">
+        <div id="alerta-grupo"></div>
+
+        <!-- Contadores -->
+        <div class="mini-contadores">
+          <div class="mini-cnt"><span class="cdot cdot-p"></span><span class="mini-val" id="mg-cp">0</span> Puntuales</div>
+          <div class="mini-cnt"><span class="cdot cdot-t"></span><span class="mini-val" id="mg-ct">0</span> Tardíos</div>
+          <div class="mini-cnt"><span class="cdot cdot-a"></span><span class="mini-val" id="mg-ca">0</span> Ausentes</div>
+          <div class="mini-cnt" style="margin-left:auto;">Total: <span class="mini-val" id="mg-ctotal">0</span></div>
+        </div>
+
+        <!-- Acciones rápidas -->
+        <div class="quick-bar">
+          <button class="btn-xs btn-xs-success" onclick="marcarTodosGrupo('Puntual')">✅ Todos presentes</button>
+          <button class="btn-xs btn-xs-warn"    onclick="marcarTodosGrupo('Tarde')">⚠ Todos tarde</button>
+          <button class="btn-xs btn-xs-danger"  onclick="marcarTodosGrupo('Ausente')">❌ Todos ausentes</button>
+          <span style="font-size:10px;color:#aaa;margin-left:auto;">
+            <span class="qr-lbl">QR</span> ya registrado
+          </span>
+        </div>
+
+        <div id="mg-body"></div>
+      </div>
+
     </div>
   </div>
 
@@ -323,13 +457,159 @@
 
   function onQrError() { /* silencioso */ }
 
-  // ---- REGISTRO MANUAL ----
-  function registrarManual() {
-    const codigo = document.getElementById('input-manual').value.trim();
-    if (!codigo) return;
-    mostrarCargando();
-    procesarCodigo(codigo);
-    document.getElementById('input-manual').value = '';
+  // ---- REGISTRO POR GRUPO ----
+  let grupoEstudiantes = [];
+
+  function cargarFiltrosGrupo() {
+    google.script.run
+      .withSuccessHandler(data => {
+        poblarSelect('mg-carrera',  data.carreras);
+        poblarSelect('mg-grado',    data.grados);
+        poblarSelect('mg-seccion',  data.secciones);
+      })
+      .obtenerFiltrosDisponibles();
+  }
+
+  function poblarSelect(id, valores) {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="Todos">Todos</option>';
+    valores.forEach(v => {
+      const o = document.createElement('option');
+      o.value = o.textContent = v;
+      sel.appendChild(o);
+    });
+  }
+
+  function cargarListaGrupo() {
+    const carrera = document.getElementById('mg-carrera').value;
+    const grado   = document.getElementById('mg-grado').value;
+    const seccion = document.getElementById('mg-seccion').value;
+    const fecha   = new Date().toISOString().split('T')[0];
+
+    document.getElementById('mg-lista').style.display = '';
+    document.getElementById('mg-body').innerHTML = '<div style="text-align:center;padding:16px;"><div class="spinner"></div></div>';
+    document.getElementById('btn-guardar-grupo').style.display = 'none';
+
+    google.script.run
+      .withSuccessHandler(data => {
+        grupoEstudiantes = data;
+        renderGrupo(data);
+        document.getElementById('btn-guardar-grupo').style.display = data.length ? '' : 'none';
+      })
+      .withFailureHandler(() => {
+        document.getElementById('mg-body').innerHTML = '<div class="empty-state">Error al cargar</div>';
+      })
+      .obtenerEstudiantesPorGrupo(carrera, grado, seccion, fecha);
+  }
+
+  function renderGrupo(data) {
+    if (!data || data.length === 0) {
+      document.getElementById('mg-body').innerHTML =
+        '<div class="empty-state" style="padding:20px 0;">No hay estudiantes con esos filtros.<br><small>Asegúrate de asignarles Grado y Sección.</small></div>';
+      actualizarContadoresGrupo();
+      return;
+    }
+
+    document.getElementById('mg-body').innerHTML = `
+      <div class="glista">
+        ${data.map((e, i) => {
+          const locked = e.estadoHoy !== null;
+          const estado = e.estadoHoy || 'Ausente';
+          return `
+            <div class="grow ${locked ? 'locked' : ''}" id="grow-${i}">
+              <div class="gavatar ${estado.toLowerCase()}" id="gav-${i}">${e.nombre.charAt(0).toUpperCase()}</div>
+              <div class="ginfo">
+                <div class="gnombre">${e.nombre}${locked ? '<span class="qr-lbl">QR</span>' : ''}</div>
+                <div class="gmeta">${e.id} · ${[e.carrera, e.grado ? 'G' + e.grado : '', e.seccion ? 'Sec.' + e.seccion : ''].filter(Boolean).join(' · ')}</div>
+              </div>
+              <div class="etoggle">
+                <input type="radio" name="eg-${i}" id="ep-${i}" value="Puntual"
+                  ${estado === 'Puntual' ? 'checked' : ''} onchange="onEstadoGrupoCambio(${i})">
+                <label for="ep-${i}">✅</label>
+                <input type="radio" name="eg-${i}" id="et-${i}" value="Tarde"
+                  ${estado === 'Tarde' ? 'checked' : ''} onchange="onEstadoGrupoCambio(${i})">
+                <label for="et-${i}">⚠</label>
+                <input type="radio" name="eg-${i}" id="ea-${i}" value="Ausente"
+                  ${estado === 'Ausente' || !e.estadoHoy ? 'checked' : ''} onchange="onEstadoGrupoCambio(${i})">
+                <label for="ea-${i}">❌</label>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>`;
+
+    actualizarContadoresGrupo();
+  }
+
+  function onEstadoGrupoCambio(i) {
+    const val = document.querySelector(`input[name="eg-${i}"]:checked`).value;
+    const av  = document.getElementById('gav-' + i);
+    av.className = 'gavatar ' + val.toLowerCase();
+    actualizarContadoresGrupo();
+  }
+
+  function marcarTodosGrupo(estado) {
+    grupoEstudiantes.forEach((e, i) => {
+      if (e.estadoHoy !== null) return;
+      const r = document.querySelector(`input[name="eg-${i}"][value="${estado}"]`);
+      if (r) { r.checked = true; onEstadoGrupoCambio(i); }
+    });
+  }
+
+  function actualizarContadoresGrupo() {
+    let p = 0, t = 0, a = 0;
+    grupoEstudiantes.forEach((_, i) => {
+      const r = document.querySelector(`input[name="eg-${i}"]:checked`);
+      if (!r) return;
+      if (r.value === 'Puntual') p++;
+      else if (r.value === 'Tarde') t++;
+      else a++;
+    });
+    document.getElementById('mg-cp').textContent    = p;
+    document.getElementById('mg-ct').textContent    = t;
+    document.getElementById('mg-ca').textContent    = a;
+    document.getElementById('mg-ctotal').textContent = grupoEstudiantes.length;
+  }
+
+  function guardarListaGrupo() {
+    const registros = grupoEstudiantes
+      .filter((e, i) => e.estadoHoy === null)  // omitir ya registrados por QR
+      .map((e, _) => {
+        const idx = grupoEstudiantes.indexOf(e);
+        const r   = document.querySelector(`input[name="eg-${idx}"]:checked`);
+        return { id: e.id, observacion: r ? r.value : 'Ausente' };
+      });
+
+    const materia = document.getElementById('mg-materia').value.trim() || 'General';
+    const fecha   = new Date().toISOString().split('T')[0];
+
+    document.getElementById('btn-guardar-grupo').disabled = true;
+    document.getElementById('btn-guardar-grupo').textContent = '⏳ Guardando...';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        const el = document.getElementById('alerta-grupo');
+        el.textContent  = res.mensaje;
+        el.className    = res.ok ? 'ok' : 'error';
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 5000);
+
+        document.getElementById('btn-guardar-grupo').disabled = false;
+        document.getElementById('btn-guardar-grupo').textContent = '💾 Guardar';
+
+        if (res.ok) {
+          cargarListaGrupo();     // recargar para mostrar bloqueados
+          cargarHistorialHoy();   // actualizar historial general
+        }
+      })
+      .withFailureHandler(err => {
+        const el = document.getElementById('alerta-grupo');
+        el.textContent  = 'Error: ' + err.message;
+        el.className    = 'error';
+        el.style.display = 'block';
+        document.getElementById('btn-guardar-grupo').disabled = false;
+        document.getElementById('btn-guardar-grupo').textContent = '💾 Guardar';
+      })
+      .registrarAsistenciaMasiva(registros, materia, fecha);
   }
 
   // ---- LLAMADA AL SERVIDOR ----
@@ -434,6 +714,7 @@
   // ---- INIT ----
   window.onload = () => {
     cargarHistorialHoy();
+    cargarFiltrosGrupo();
     iniciarEscaner();
   };
 </script>
