@@ -7,7 +7,7 @@ const SHEET_ESTUDIANTES = 'Estudiantes';
 const SHEET_ASISTENCIA  = 'Asistencia';
 const SHEET_CONFIG      = 'Configuracion';
 
-// Columnas hoja Estudiantes: ID | Nombre | Carrera | Email | Estado | Grado | Sección
+// Columnas hoja Estudiantes: ID | Nombre | Carrera | Email | Estado | Grado | Sección | Sexo
 const COL_EST_ID       = 1;
 const COL_EST_NOMBRE   = 2;
 const COL_EST_PROGRAMA = 3;
@@ -15,8 +15,9 @@ const COL_EST_EMAIL    = 4;
 const COL_EST_ESTADO   = 5;
 const COL_EST_GRADO    = 6;
 const COL_EST_SECCION  = 7;
+const COL_EST_SEXO     = 8;
 
-// Columnas hoja Asistencia: Fecha | Hora | ID | Nombre | Carrera | Grado | Sección | Materia | Observación
+// Columnas hoja Asistencia: Fecha | Hora | ID | Nombre | Carrera | Grado | Sección | Materia | Observación | Sexo
 const COL_ASIST_FECHA    = 1;
 const COL_ASIST_HORA     = 2;
 const COL_ASIST_ID       = 3;
@@ -26,7 +27,8 @@ const COL_ASIST_GRADO    = 6;
 const COL_ASIST_SECCION  = 7;
 const COL_ASIST_MATERIA  = 8;
 const COL_ASIST_OBS      = 9;
-const NUM_COLS_ASIST     = 9;
+const COL_ASIST_SEXO     = 10;
+const NUM_COLS_ASIST     = 10;
 
 // ------------------------------------------------------------
 // PUNTO DE ENTRADA WEB APP
@@ -99,24 +101,24 @@ function inicializarSpreadsheet() {
     sheetEst = ss.insertSheet(SHEET_ESTUDIANTES);
   }
   // Siempre actualizar encabezados (permite migración)
-  const headersEst = ['ID / Código', 'Nombre Completo', 'Carrera / Programa', 'Email', 'Estado', 'Grado', 'Sección'];
+  const headersEst = ['ID / Código', 'Nombre Completo', 'Carrera / Programa', 'Email', 'Estado', 'Grado', 'Sección', 'Sexo'];
   sheetEst.getRange(1, 1, 1, headersEst.length).setValues([headersEst]);
   sheetEst.getRange(1, 1, 1, headersEst.length)
     .setFontWeight('bold').setBackground('#1a73e8').setFontColor('#ffffff');
   sheetEst.setFrozenRows(1);
-  [120, 220, 200, 200, 90, 90, 100].forEach((w, i) => sheetEst.setColumnWidth(i + 1, w));
+  [120, 220, 200, 200, 90, 90, 100, 80].forEach((w, i) => sheetEst.setColumnWidth(i + 1, w));
 
   // ---- Hoja Asistencia ----
   let sheetAsist = ss.getSheetByName(SHEET_ASISTENCIA);
   if (!sheetAsist) {
     sheetAsist = ss.insertSheet(SHEET_ASISTENCIA);
   }
-  const headersAsist = ['Fecha', 'Hora', 'ID / Código', 'Nombre Completo', 'Carrera', 'Grado', 'Sección', 'Materia', 'Observación'];
+  const headersAsist = ['Fecha', 'Hora', 'ID / Código', 'Nombre Completo', 'Carrera', 'Grado', 'Sección', 'Materia', 'Observación', 'Sexo'];
   sheetAsist.getRange(1, 1, 1, headersAsist.length).setValues([headersAsist]);
   sheetAsist.getRange(1, 1, 1, headersAsist.length)
     .setFontWeight('bold').setBackground('#1a73e8').setFontColor('#ffffff');
   sheetAsist.setFrozenRows(1);
-  [110, 80, 120, 220, 190, 80, 90, 160, 110].forEach((w, i) => sheetAsist.setColumnWidth(i + 1, w));
+  [110, 80, 120, 220, 190, 80, 90, 160, 110, 80].forEach((w, i) => sheetAsist.setColumnWidth(i + 1, w));
 
   SpreadsheetApp.getUi().alert('✅ Spreadsheet inicializado correctamente.');
 }
@@ -189,7 +191,7 @@ function obtenerFiltrosDisponibles() {
   const sheet = ss.getSheetByName(SHEET_ESTUDIANTES);
   if (!sheet || sheet.getLastRow() < 2) return { carreras: [], grados: [], secciones: [] };
 
-  const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+  const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
   const carreras  = new Set();
   const grados    = new Set();
   const secciones = new Set();
@@ -237,7 +239,7 @@ function obtenerEstudiantesPorGrupo(carrera, grado, seccion, fecha) {
     });
   }
 
-  const datosE = sheetE.getRange(2, 1, sheetE.getLastRow() - 1, 7).getValues();
+  const datosE = sheetE.getRange(2, 1, sheetE.getLastRow() - 1, 8).getValues();
   const resultado = [];
 
   datosE.forEach(r => {
@@ -260,7 +262,8 @@ function obtenerEstudiantesPorGrupo(carrera, grado, seccion, fecha) {
       grado:     eGrado,
       seccion:   eSeccion,
       email:     r[COL_EST_EMAIL    - 1],
-      estadoHoy: asistHoy[id] || null  // null = sin registro aún
+      sexo:      r[COL_EST_SEXO     - 1].toString().trim(),
+      estadoHoy: asistHoy[id] || null
     });
   });
 
@@ -302,24 +305,39 @@ function registrarAsistenciaMasiva(registros, materia, fecha) {
       });
     }
 
-    // Índice de estudiantes
+    // Índice de estudiantes (8 columnas para incluir Sexo)
     const mapaEst = {};
     if (sheetE.getLastRow() > 1) {
-      sheetE.getRange(2, 1, sheetE.getLastRow() - 1, 7).getValues().forEach(r => {
+      sheetE.getRange(2, 1, sheetE.getLastRow() - 1, 8).getValues().forEach(r => {
         if (r[0] !== '') mapaEst[r[0].toString().trim()] = r;
       });
     }
 
     let nuevos      = 0;
     let actualizados = 0;
+    // Para el resumen por sexo
+    const resumenData = { totalH:0, totalM:0, presentesH:0, presentesM:0, ausentesH:0, ausentesM:0, puntuales:0, tarde:0 };
 
     registros.forEach(reg => {
       const id  = reg.id.toString().trim();
       const obs = reg.observacion || 'Ausente';
       const color = obs === 'Puntual' ? '#d9ead3' : obs === 'Tarde' ? '#fff2cc' : '#fce8e6';
+      const filaE = mapaEst[id];
+      const sexo  = filaE ? filaE[COL_EST_SEXO - 1].toString().trim().toUpperCase() : '';
+      const esH   = sexo === 'M';
+      const esM   = sexo === 'F';
+
+      // Acumular resumen
+      if (esH) resumenData.totalH++;
+      else if (esM) resumenData.totalM++;
+      if (obs !== 'Ausente') {
+        if (esH) resumenData.presentesH++; else if (esM) resumenData.presentesM++;
+        if (obs === 'Puntual') resumenData.puntuales++; else resumenData.tarde++;
+      } else {
+        if (esH) resumenData.ausentesH++; else if (esM) resumenData.ausentesM++;
+      }
 
       if (filaExistente[id]) {
-        // Actualizar observación (columna 9) y materia (columna 8) en la fila existente
         const fila = filaExistente[id];
         sheetA.getRange(fila, COL_ASIST_MATERIA).setValue(materiaUso);
         sheetA.getRange(fila, COL_ASIST_OBS).setValue(obs);
@@ -328,25 +346,41 @@ function registrarAsistenciaMasiva(registros, materia, fecha) {
         return;
       }
 
-      // Insertar nuevo registro
-      const fila = mapaEst[id];
-      if (!fila) return;
-
+      if (!filaE) return;
       const est = {
-        id:       fila[COL_EST_ID       - 1],
-        nombre:   fila[COL_EST_NOMBRE   - 1],
-        programa: fila[COL_EST_PROGRAMA - 1],
-        grado:    fila[COL_EST_GRADO    - 1],
-        seccion:  fila[COL_EST_SECCION  - 1]
+        id:       filaE[COL_EST_ID       - 1],
+        nombre:   filaE[COL_EST_NOMBRE   - 1],
+        programa: filaE[COL_EST_PROGRAMA - 1],
+        grado:    filaE[COL_EST_GRADO    - 1],
+        seccion:  filaE[COL_EST_SECCION  - 1],
+        sexo:     sexo
       };
-
       _appendAsistencia(sheetA, fechaUso, horaUso, est, materiaUso, obs);
       nuevos++;
     });
 
+    const total     = resumenData.totalH + resumenData.totalM;
+    const presentes = resumenData.presentesH + resumenData.presentesM;
+    const ausentes  = resumenData.ausentesH  + resumenData.ausentesM;
+
     return {
       ok: true,
-      mensaje: `✅ Asistencia guardada: ${nuevos} nuevos, ${actualizados} actualizados.`
+      mensaje: `✅ Asistencia guardada: ${nuevos} nuevos, ${actualizados} actualizados.`,
+      resumen: {
+        fecha:      fechaUso,
+        materia:    materiaUso,
+        totalH:     resumenData.totalH,
+        totalM:     resumenData.totalM,
+        total:      total,
+        presentesH: resumenData.presentesH,
+        presentesM: resumenData.presentesM,
+        presentes:  presentes,
+        ausentesH:  resumenData.ausentesH,
+        ausentesM:  resumenData.ausentesM,
+        ausentes:   ausentes,
+        puntuales:  resumenData.puntuales,
+        tarde:      resumenData.tarde
+      }
     };
 
   } catch (err) {
@@ -363,7 +397,7 @@ function obtenerEstudiantes() {
   const sheet = ss.getSheetByName(SHEET_ESTUDIANTES);
   if (!sheet || sheet.getLastRow() < 2) return [];
 
-  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues()
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues()
     .filter(r => r[0] !== '')
     .map(r => ({
       id:       r[COL_EST_ID       - 1],
@@ -372,7 +406,8 @@ function obtenerEstudiantes() {
       email:    r[COL_EST_EMAIL    - 1],
       estado:   r[COL_EST_ESTADO   - 1],
       grado:    r[COL_EST_GRADO    - 1],
-      seccion:  r[COL_EST_SECCION  - 1]
+      seccion:  r[COL_EST_SECCION  - 1],
+      sexo:     r[COL_EST_SEXO     - 1]
     }));
 }
 
@@ -391,7 +426,7 @@ function agregarEstudiante(datos) {
     sheet.appendRow([
       datos.id, datos.nombre, datos.programa,
       datos.email || '', datos.estado || 'Activo',
-      datos.grado || '', datos.seccion || ''
+      datos.grado || '', datos.seccion || '', datos.sexo || ''
     ]);
     return { ok: true, mensaje: `Estudiante ${datos.nombre} agregado correctamente.` };
   } catch (err) {
@@ -407,10 +442,10 @@ function actualizarEstudiante(idOriginal, datos) {
 
     for (let i = 1; i < filas.length; i++) {
       if (filas[i][0].toString().trim() === idOriginal.toString().trim()) {
-        sheet.getRange(i + 1, 1, 1, 7).setValues([[
+        sheet.getRange(i + 1, 1, 1, 8).setValues([[
           datos.id, datos.nombre, datos.programa,
           datos.email || '', datos.estado || 'Activo',
-          datos.grado || '', datos.seccion || ''
+          datos.grado || '', datos.seccion || '', datos.sexo || ''
         ]]);
         return { ok: true, mensaje: 'Estudiante actualizado.' };
       }
@@ -571,7 +606,7 @@ function _toDateStr(f) {
 
 function _buscarEstudiante(sheet, id) {
   if (!sheet || sheet.getLastRow() < 2) return null;
-  const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+  const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
   for (let i = 0; i < datos.length; i++) {
     if (datos[i][0].toString().trim() === id) {
       return {
@@ -581,7 +616,8 @@ function _buscarEstudiante(sheet, id) {
         email:    datos[i][COL_EST_EMAIL    - 1],
         estado:   datos[i][COL_EST_ESTADO   - 1],
         grado:    datos[i][COL_EST_GRADO    - 1],
-        seccion:  datos[i][COL_EST_SECCION  - 1]
+        seccion:  datos[i][COL_EST_SECCION  - 1],
+        sexo:     datos[i][COL_EST_SEXO     - 1].toString().trim()
       };
     }
   }
@@ -606,7 +642,7 @@ function _appendAsistencia(sheet, fecha, hora, est, materia, obs) {
     fecha, hora,
     est.id, est.nombre, est.programa || est.carrera || '',
     est.grado || '', est.seccion || '',
-    materia, obs
+    materia, obs, est.sexo || ''
   ]);
   const col = obs === 'Puntual' ? '#d9ead3' : obs === 'Tarde' ? '#fff2cc' : '#fce8e6';
   sheet.getRange(sheet.getLastRow(), 1, 1, NUM_COLS_ASIST).setBackground(col);

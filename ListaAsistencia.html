@@ -148,6 +148,50 @@
       .student-row { grid-template-columns: 32px 1fr; }
       .estado-toggle { grid-column: 1 / -1; margin-left: 44px; }
     }
+
+    /* ---- RESUMEN ---- */
+    #resumen-card {
+      display: none;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      overflow: hidden;
+      margin-bottom: 20px;
+      animation: fadeIn .4s ease;
+    }
+    .res-header {
+      background: #1a73e8; color: #fff;
+      padding: 13px 20px; font-size: 15px; font-weight: 700;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .res-body { padding: 18px 20px; }
+    .res-fecha { font-size: 12px; color: #555; margin-bottom: 14px; }
+    .res-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .res-col {
+      background: #f0f4f8; border-radius: 10px;
+      padding: 10px 12px; text-align: center;
+    }
+    .res-col-title { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+    .res-num { font-size: 22px; font-weight: 800; color: #1a73e8; line-height: 1; }
+    .res-num.verde  { color: #2e7d32; }
+    .res-num.rojo   { color: #c62828; }
+    .res-breakdown {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+      font-size: 11px; margin-top: 8px;
+    }
+    .res-bd-item {
+      background: #fff; border-radius: 6px; padding: 5px 8px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .res-bd-val { font-weight: 800; font-size: 13px; }
+    .btn-cerrar-res {
+      background: rgba(255,255,255,.2); border: none; color: #fff;
+      border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -196,6 +240,43 @@
         </div>
       </div>
       <button class="btn btn-primary" onclick="cargarLista()">📋 Cargar lista de estudiantes</button>
+    </div>
+  </div>
+
+  <!-- ===== RESUMEN ===== -->
+  <div id="resumen-card">
+    <div class="res-header">
+      <span>📊 Resumen de Asistencia</span>
+      <button class="btn-cerrar-res" onclick="document.getElementById('resumen-card').style.display='none'">✕ Cerrar</button>
+    </div>
+    <div class="res-body">
+      <div class="res-fecha" id="rc-fecha-txt"></div>
+      <div class="res-grid">
+        <div class="res-col">
+          <div class="res-col-title">Total</div>
+          <div class="res-num" id="rc-total">0</div>
+          <div class="res-breakdown">
+            <div class="res-bd-item"><span>♂ H</span><span class="res-bd-val" id="rc-totalH">0</span></div>
+            <div class="res-bd-item"><span>♀ M</span><span class="res-bd-val" id="rc-totalM">0</span></div>
+          </div>
+        </div>
+        <div class="res-col">
+          <div class="res-col-title">Presentes</div>
+          <div class="res-num verde" id="rc-presentes">0</div>
+          <div class="res-breakdown">
+            <div class="res-bd-item"><span>♂ H</span><span class="res-bd-val" id="rc-presentesH">0</span></div>
+            <div class="res-bd-item"><span>♀ M</span><span class="res-bd-val" id="rc-presentesM">0</span></div>
+          </div>
+        </div>
+        <div class="res-col">
+          <div class="res-col-title">Ausentes</div>
+          <div class="res-num rojo" id="rc-ausentes">0</div>
+          <div class="res-breakdown">
+            <div class="res-bd-item"><span>♂ H</span><span class="res-bd-val" id="rc-ausentesH">0</span></div>
+            <div class="res-bd-item"><span>♀ M</span><span class="res-bd-val" id="rc-ausentesM">0</span></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -392,7 +473,10 @@
         mostrarAlerta(res.mensaje, res.ok);
         document.getElementById('btn-guardar').disabled = false;
         document.getElementById('btn-guardar').textContent = '💾 Guardar asistencia';
-        if (res.ok) cargarLista();
+        if (res.ok) {
+          cargarLista();
+          if (res.resumen) mostrarResumen(res.resumen);
+        }
       })
       .withFailureHandler(err => {
         mostrarAlerta('Error de conexión: ' + err.message, false);
@@ -400,6 +484,24 @@
         document.getElementById('btn-guardar').textContent = '💾 Guardar asistencia';
       })
       .registrarAsistenciaMasiva(registros, materia, fecha);
+  }
+
+  // ---- RESUMEN ----
+  function mostrarResumen(r) {
+    document.getElementById('rc-fecha-txt').textContent =
+      'Fecha: ' + r.fecha + (r.materia && r.materia !== 'General' ? '  ·  Materia: ' + r.materia : '');
+    document.getElementById('rc-total').textContent      = r.total;
+    document.getElementById('rc-totalH').textContent     = r.totalH;
+    document.getElementById('rc-totalM').textContent     = r.totalM;
+    document.getElementById('rc-presentes').textContent  = r.presentes;
+    document.getElementById('rc-presentesH').textContent = r.presentesH;
+    document.getElementById('rc-presentesM').textContent = r.presentesM;
+    document.getElementById('rc-ausentes').textContent   = r.ausentes;
+    document.getElementById('rc-ausentesH').textContent  = r.ausentesH;
+    document.getElementById('rc-ausentesM').textContent  = r.ausentesM;
+    const card = document.getElementById('resumen-card');
+    card.style.display = '';
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // ---- ALERTA ----

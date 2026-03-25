@@ -283,6 +283,53 @@
       font-size: 13px;
       padding: 20px 0;
     }
+
+    /* ---- RESUMEN POST-GUARDADO ---- */
+    #resumen-grupo {
+      display: none;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.1);
+      overflow: hidden;
+      margin-bottom: 20px;
+      animation: fadeIn .4s ease;
+    }
+    .res-header {
+      background: #1a73e8; color: #fff;
+      padding: 13px 20px; font-size: 15px; font-weight: 700;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .res-body { padding: 18px 20px; }
+    .res-fecha { font-size: 12px; color: #555; margin-bottom: 14px; }
+    .res-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .res-col {
+      background: #f0f4f8; border-radius: 10px;
+      padding: 10px 12px; text-align: center;
+    }
+    .res-col-title { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+    .res-row-label { font-size: 11px; color: #555; margin-bottom: 2px; }
+    .res-num { font-size: 22px; font-weight: 800; color: #1a73e8; line-height: 1; }
+    .res-num.verde  { color: #2e7d32; }
+    .res-num.rojo   { color: #c62828; }
+    .res-num.naranja{ color: #e65100; }
+    .res-breakdown {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+      font-size: 11px; margin-top: 8px;
+    }
+    .res-bd-item {
+      background: #fff; border-radius: 6px; padding: 5px 8px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .res-bd-val { font-weight: 800; font-size: 13px; }
+    .btn-cerrar-res {
+      background: rgba(255,255,255,.2); border: none; color: #fff;
+      border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -380,6 +427,43 @@
         <div id="mg-body"></div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ===== RESUMEN ASISTENCIA ===== -->
+  <div id="resumen-grupo">
+    <div class="res-header">
+      <span>📊 Resumen de Asistencia</span>
+      <button class="btn-cerrar-res" onclick="document.getElementById('resumen-grupo').style.display='none'">✕ Cerrar</button>
+    </div>
+    <div class="res-body">
+      <div class="res-fecha" id="res-fecha-txt"></div>
+      <div class="res-grid">
+        <div class="res-col">
+          <div class="res-col-title">Total</div>
+          <div class="res-num" id="res-total">0</div>
+          <div class="res-breakdown">
+            <div class="res-bd-item"><span>♂ H</span><span class="res-bd-val" id="res-totalH">0</span></div>
+            <div class="res-bd-item"><span>♀ M</span><span class="res-bd-val" id="res-totalM">0</span></div>
+          </div>
+        </div>
+        <div class="res-col">
+          <div class="res-col-title">Presentes</div>
+          <div class="res-num verde" id="res-presentes">0</div>
+          <div class="res-breakdown">
+            <div class="res-bd-item"><span>♂ H</span><span class="res-bd-val" id="res-presentesH">0</span></div>
+            <div class="res-bd-item"><span>♀ M</span><span class="res-bd-val" id="res-presentesM">0</span></div>
+          </div>
+        </div>
+        <div class="res-col">
+          <div class="res-col-title">Ausentes</div>
+          <div class="res-num rojo" id="res-ausentes">0</div>
+          <div class="res-breakdown">
+            <div class="res-bd-item"><span>♂ H</span><span class="res-bd-val" id="res-ausentesH">0</span></div>
+            <div class="res-bd-item"><span>♀ M</span><span class="res-bd-val" id="res-ausentesM">0</span></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -590,8 +674,9 @@
         document.getElementById('btn-guardar-grupo').textContent = '💾 Guardar';
 
         if (res.ok) {
-          cargarListaGrupo();     // recargar para mostrar bloqueados
+          cargarListaGrupo();     // recargar lista
           cargarHistorialHoy();   // actualizar historial general
+          if (res.resumen) mostrarResumenGrupo(res.resumen);
         }
       })
       .withFailureHandler(err => {
@@ -702,6 +787,24 @@
         <span class="hist-badge ${r.observacion === 'Puntual' ? 'p' : 't'}">${r.observacion}</span>
       </div>
     `).join('');
+  }
+
+  // ---- RESUMEN POST-GUARDADO ----
+  function mostrarResumenGrupo(r) {
+    document.getElementById('res-fecha-txt').textContent =
+      'Fecha: ' + r.fecha + (r.materia && r.materia !== 'General' ? '  ·  Materia: ' + r.materia : '');
+    document.getElementById('res-total').textContent     = r.total;
+    document.getElementById('res-totalH').textContent    = r.totalH;
+    document.getElementById('res-totalM').textContent    = r.totalM;
+    document.getElementById('res-presentes').textContent = r.presentes;
+    document.getElementById('res-presentesH').textContent= r.presentesH;
+    document.getElementById('res-presentesM').textContent= r.presentesM;
+    document.getElementById('res-ausentes').textContent  = r.ausentes;
+    document.getElementById('res-ausentesH').textContent = r.ausentesH;
+    document.getElementById('res-ausentesM').textContent = r.ausentesM;
+    const card = document.getElementById('resumen-grupo');
+    card.style.display = '';
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // ---- INIT ----
