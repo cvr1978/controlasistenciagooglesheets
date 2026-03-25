@@ -6,6 +6,7 @@
 const SHEET_ESTUDIANTES = 'Estudiantes';
 const SHEET_ASISTENCIA  = 'Asistencia';
 const SHEET_CONFIG      = 'Configuracion';
+const SHEET_RESUMEN     = 'Resumen';
 
 // Columnas hoja Estudiantes: ID | Nombre | Carrera | Email | Estado | Grado | Sección | Sexo
 const COL_EST_ID       = 1;
@@ -119,6 +120,9 @@ function inicializarSpreadsheet() {
     .setFontWeight('bold').setBackground('#1a73e8').setFontColor('#ffffff');
   sheetAsist.setFrozenRows(1);
   [110, 80, 120, 220, 190, 80, 90, 160, 110, 80].forEach((w, i) => sheetAsist.setColumnWidth(i + 1, w));
+
+  // ---- Hoja Resumen ----
+  _obtenerOCrearHojaResumen(ss);
 
   SpreadsheetApp.getUi().alert('✅ Spreadsheet inicializado correctamente.');
 }
@@ -315,19 +319,24 @@ function registrarAsistenciaMasiva(registros, materia, fecha) {
 
     let nuevos      = 0;
     let actualizados = 0;
-    // Para el resumen por sexo
+    // Para el resumen global por sexo
     const resumenData = { totalH:0, totalM:0, presentesH:0, presentesM:0, ausentesH:0, ausentesM:0, puntuales:0, tarde:0 };
+    // Para el resumen agrupado por grado/sección (se escribe en la hoja Resumen)
+    const grupoResumen = {};
 
     registros.forEach(reg => {
       const id  = reg.id.toString().trim();
       const obs = reg.observacion || 'Ausente';
       const color = obs === 'Puntual' ? '#d9ead3' : obs === 'Tarde' ? '#fff2cc' : '#fce8e6';
       const filaE = mapaEst[id];
-      const sexo  = filaE ? filaE[COL_EST_SEXO - 1].toString().trim().toUpperCase() : '';
+      const sexo    = filaE ? filaE[COL_EST_SEXO     - 1].toString().trim().toUpperCase() : '';
+      const grado   = filaE ? filaE[COL_EST_GRADO    - 1].toString().trim() : '';
+      const seccion = filaE ? filaE[COL_EST_SECCION  - 1].toString().trim() : '';
+      const carrera = filaE ? filaE[COL_EST_PROGRAMA - 1].toString().trim() : '';
       const esH   = sexo === 'M';
       const esM   = sexo === 'F';
 
-      // Acumular resumen
+      // Acumular resumen global
       if (esH) resumenData.totalH++;
       else if (esM) resumenData.totalM++;
       if (obs !== 'Ausente') {
@@ -335,6 +344,24 @@ function registrarAsistenciaMasiva(registros, materia, fecha) {
         if (obs === 'Puntual') resumenData.puntuales++; else resumenData.tarde++;
       } else {
         if (esH) resumenData.ausentesH++; else if (esM) resumenData.ausentesM++;
+      }
+
+      // Acumular resumen por grado
+      if (filaE) {
+        const gKey = `${carrera}|${grado}|${seccion}`;
+        if (!grupoResumen[gKey]) {
+          grupoResumen[gKey] = { carrera, grado, seccion,
+            totalH:0, totalM:0, presentesH:0, presentesM:0,
+            ausentesH:0, ausentesM:0, puntuales:0, tarde:0 };
+        }
+        const gr = grupoResumen[gKey];
+        if (esH) gr.totalH++; else if (esM) gr.totalM++;
+        if (obs !== 'Ausente') {
+          if (esH) gr.presentesH++; else if (esM) gr.presentesM++;
+          if (obs === 'Puntual') gr.puntuales++; else gr.tarde++;
+        } else {
+          if (esH) gr.ausentesH++; else if (esM) gr.ausentesM++;
+        }
       }
 
       if (filaExistente[id]) {
@@ -362,6 +389,9 @@ function registrarAsistenciaMasiva(registros, materia, fecha) {
     const total     = resumenData.totalH + resumenData.totalM;
     const presentes = resumenData.presentesH + resumenData.presentesM;
     const ausentes  = resumenData.ausentesH  + resumenData.ausentesM;
+
+    // Escribir resumen por grado en la hoja Resumen
+    _escribirResumenHoja(ss, fechaUso, horaUso, materiaUso, grupoResumen);
 
     return {
       ok: true,
@@ -635,6 +665,57 @@ function _yaRegistroHoy(sheet, id, hoyStr) {
         _toDateStr(f) === hoyStr) return true;
   }
   return false;
+}
+
+/**
+ * Devuelve la hoja Resumen, creándola con encabezados si no existe.
+ */
+function _obtenerOCrearHojaResumen(ss) {
+  let sheet = ss.getSheetByName(SHEET_RESUMEN);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_RESUMEN);
+    const headers = [
+      'Fecha', 'Hora', 'Carrera / Programa', 'Grado', 'Sección', 'Materia',
+      'Total', 'Total H', 'Total M',
+      'Presentes', 'Pres. H', 'Pres. M',
+      'Ausentes', 'Aus. H', 'Aus. M',
+      'Puntuales', 'Tardíos'
+    ];
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length)
+      .setFontWeight('bold').setBackground('#1a73e8').setFontColor('#ffffff');
+    sheet.setFrozenRows(1);
+    [110, 80, 200, 80, 90, 160, 60, 60, 60, 80, 70, 70, 80, 70, 70, 85, 75]
+      .forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+  }
+  return sheet;
+}
+
+/**
+ * Escribe una fila por cada grupo (grado/sección/carrera) en la hoja Resumen.
+ */
+function _escribirResumenHoja(ss, fecha, hora, materia, grupoResumen) {
+  try {
+    const sheet = _obtenerOCrearHojaResumen(ss);
+    Object.values(grupoResumen).forEach(g => {
+      const total     = g.totalH    + g.totalM;
+      const presentes = g.presentesH + g.presentesM;
+      const ausentes  = g.ausentesH  + g.ausentesM;
+      sheet.appendRow([
+        fecha, hora, g.carrera, g.grado, g.seccion, materia,
+        total,    g.totalH,    g.totalM,
+        presentes, g.presentesH, g.presentesM,
+        ausentes,  g.ausentesH,  g.ausentesM,
+        g.puntuales, g.tarde
+      ]);
+      const pct = total > 0 ? presentes / total : 0;
+      const bg  = pct >= 0.8 ? '#d9ead3' : pct >= 0.5 ? '#fff2cc' : '#fce8e6';
+      sheet.getRange(sheet.getLastRow(), 1, 1, 17).setBackground(bg);
+    });
+  } catch (err) {
+    // No interrumpir el flujo principal si falla el resumen
+    console.error('_escribirResumenHoja error: ' + err.message);
+  }
 }
 
 function _appendAsistencia(sheet, fecha, hora, est, materia, obs) {
