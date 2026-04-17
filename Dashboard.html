@@ -97,24 +97,109 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Resumen por estudiante */
-    .student-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f4f8; }
-    .student-row:last-child { border-bottom: none; }
-    .stu-avatar {
-      width: 38px; height: 38px; border-radius: 50%;
-      background: #1a73e8; color: #fff;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 15px; flex-shrink: 0;
+    /* Lista de estudiantes para buscar */
+    .stu-search { position: relative; margin-bottom: 14px; }
+    .stu-search input {
+      width: 100%; padding: 10px 14px 10px 38px;
+      border: 2px solid #ddd; border-radius: 10px; font-size: 14px; outline: none;
+      transition: border-color .2s;
     }
-    .stu-info { flex: 1; }
-    .stu-nombre { font-size: 14px; font-weight: 600; }
-    .stu-id { font-size: 11px; color: #888; }
-    .stu-prog { width: 140px; }
-    .stu-pct { font-size: 13px; font-weight: 700; color: #1a73e8; white-space: nowrap; }
+    .stu-search input:focus { border-color: #1a73e8; }
+    .stu-search .ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; }
+
+    .stu-list-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 10px; cursor: pointer;
+      transition: background .15s; border: 1px solid transparent;
+    }
+    .stu-list-item:hover { background: #e8f0fe; border-color: #c5d9f5; }
+    .stu-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: #1a73e8; color: #fff; font-weight: 700; font-size: 15px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .stu-avatar.alta  { background: #2e7d32; }
+    .stu-avatar.media { background: #e65100; }
+    .stu-avatar.baja  { background: #c62828; }
+    .stu-list-info { flex: 1; }
+    .stu-list-nombre { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+    .stu-list-meta   { font-size: 11px; color: #888; margin-top: 2px; }
+    .stu-list-badge  { font-size: 13px; font-weight: 800; white-space: nowrap; }
+    .pct-alta  { color: #2e7d32; }
+    .pct-media { color: #e65100; }
+    .pct-baja  { color: #c62828; }
+
+    /* Detalle individual */
+    #stu-detalle { display: none; }
+    .det-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: #1a73e8; font-size: 13px; font-weight: 600;
+      cursor: pointer; padding: 4px 0; margin-bottom: 16px;
+      background: none; border: none;
+    }
+    .det-back:hover { text-decoration: underline; }
+
+    .det-perfil {
+      display: flex; align-items: center; gap: 16px;
+      background: #e8f0fe; border-radius: 12px; padding: 16px;
+      margin-bottom: 18px;
+    }
+    .det-avatar {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: #1a73e8; color: #fff; font-weight: 800; font-size: 22px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .det-nombre { font-size: 17px; font-weight: 700; color: #1a1a1a; }
+    .det-meta   { font-size: 12px; color: #555; margin-top: 4px; line-height: 1.6; }
+
+    .det-kpi-row {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+      margin-bottom: 18px;
+    }
+    .det-kpi {
+      background: #fff; border: 1px solid #e8f0fe; border-radius: 10px;
+      padding: 12px 8px; text-align: center;
+    }
+    .det-kpi-val  { font-size: 24px; font-weight: 800; color: #1a73e8; line-height: 1.1; }
+    .det-kpi-lbl  { font-size: 10px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; margin-top: 4px; }
+    .det-kpi.verde  .det-kpi-val { color: #2e7d32; }
+    .det-kpi.naranja .det-kpi-val { color: #e65100; }
+    .det-kpi.rojo   .det-kpi-val { color: #c62828; }
+
+    /* Barra circular SVG */
+    .det-pct-wrap {
+      display: flex; align-items: center; gap: 18px;
+      background: #f8f9ff; border-radius: 12px; padding: 14px 18px;
+      margin-bottom: 18px;
+    }
+    .det-pct-label { font-size: 13px; color: #555; line-height: 1.7; }
+    .det-pct-label strong { color: #1a73e8; }
+
+    /* Tendencia mensual */
+    .mes-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 0; border-bottom: 1px solid #f0f4f8; font-size: 13px;
+    }
+    .mes-row:last-child { border-bottom: none; }
+    .mes-label { width: 80px; color: #555; font-size: 12px; flex-shrink: 0; }
+    .mes-bar-wrap { flex: 1; background: #e8f0fe; border-radius: 6px; height: 10px; overflow: hidden; }
+    .mes-bar { height: 100%; border-radius: 6px; transition: width .5s; }
+    .mes-bar.alta    { background: #2e7d32; }
+    .mes-bar.media   { background: #e65100; }
+    .mes-bar.baja    { background: #c62828; }
+    .mes-pct-txt { width: 44px; text-align: right; font-weight: 700; font-size: 12px; }
+    .mes-cnt-txt { width: 60px; color: #888; font-size: 11px; }
+
+    /* Historial */
+    .hist-badge-p  { background: #d9ead3; color: #2e7d32; }
+    .hist-badge-t  { background: #fff3e0; color: #e65100; }
+    .hist-badge-a  { background: #fce8e6; color: #c62828; }
 
     @media (max-width: 600px) {
       .kpi-row { grid-template-columns: repeat(2,1fr); }
       .filtros { flex-direction: column; }
+      .det-kpi-row { grid-template-columns: repeat(3,1fr); }
+      .det-perfil { flex-direction: column; text-align: center; }
     }
   </style>
 </head>
@@ -201,7 +286,84 @@
 
       <!-- TAB: POR ESTUDIANTE -->
       <div class="tab-content" id="tab-estudiantes">
-        <div id="resumen-estudiantes"><div class="spinner"></div></div>
+
+        <!-- Lista / búsqueda -->
+        <div id="stu-lista">
+          <div class="stu-search">
+            <span class="ico">🔍</span>
+            <input type="text" id="stu-buscar" placeholder="Buscar por nombre, ID o carrera..."
+              oninput="filtrarEstudiantes()">
+          </div>
+          <div id="stu-lista-body"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Detalle individual -->
+        <div id="stu-detalle">
+          <button class="det-back" onclick="volverLista()">← Volver a la lista</button>
+
+          <!-- Perfil -->
+          <div class="det-perfil">
+            <div class="det-avatar" id="det-avatar">?</div>
+            <div>
+              <div class="det-nombre" id="det-nombre">—</div>
+              <div class="det-meta"  id="det-meta">—</div>
+            </div>
+          </div>
+
+          <!-- KPIs individuales -->
+          <div class="det-kpi-row">
+            <div class="det-kpi">
+              <div class="det-kpi-val" id="det-total">—</div>
+              <div class="det-kpi-lbl">Total clases</div>
+            </div>
+            <div class="det-kpi verde">
+              <div class="det-kpi-val" id="det-pct">—</div>
+              <div class="det-kpi-lbl">% Asistencia</div>
+            </div>
+            <div class="det-kpi">
+              <div class="det-kpi-val" id="det-puntuales">—</div>
+              <div class="det-kpi-lbl">Puntuales</div>
+            </div>
+            <div class="det-kpi naranja">
+              <div class="det-kpi-val" id="det-tarde">—</div>
+              <div class="det-kpi-lbl">Con retraso</div>
+            </div>
+            <div class="det-kpi rojo">
+              <div class="det-kpi-val" id="det-ausentes">—</div>
+              <div class="det-kpi-lbl">Ausencias</div>
+            </div>
+          </div>
+
+          <!-- Barra de progreso + círculo -->
+          <div class="det-pct-wrap">
+            <svg id="det-svg" width="72" height="72" viewBox="0 0 72 72">
+              <circle cx="36" cy="36" r="30" fill="none" stroke="#e8f0fe" stroke-width="8"/>
+              <circle id="det-arc" cx="36" cy="36" r="30" fill="none"
+                stroke="#1a73e8" stroke-width="8" stroke-linecap="round"
+                stroke-dasharray="0 188.5" transform="rotate(-90 36 36)"/>
+              <text id="det-arc-txt" x="36" y="41" text-anchor="middle"
+                font-size="13" font-weight="800" fill="#1a73e8">0%</text>
+            </svg>
+            <div class="det-pct-label" id="det-resumen-texto">—</div>
+          </div>
+
+          <!-- Tendencia mensual -->
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header" style="font-size:14px;">📅 Tendencia mensual</div>
+            <div class="card-body" id="det-meses"><div class="empty-state">Sin datos</div></div>
+          </div>
+
+          <!-- Historial completo -->
+          <div class="card">
+            <div class="card-header" style="font-size:14px;">
+              <span>🗒 Historial completo</span>
+              <button class="btn btn-success" style="font-size:12px; padding:5px 12px;"
+                onclick="exportarEstudiante()">⬇ CSV</button>
+            </div>
+            <div class="card-body" id="det-historial"><div class="empty-state">Sin datos</div></div>
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -235,7 +397,6 @@
 
     datosHoy = r.registros;
     renderTablaHoy(r.registros);
-    renderResumenEstudiantes(r);
   }
 
   // ---- TABLA HOY ----
@@ -323,48 +484,226 @@
     `;
   }
 
-  // ---- RESUMEN POR ESTUDIANTE ----
-  function renderResumenEstudiantes(resumen) {
-    const cont = document.getElementById('resumen-estudiantes');
-    if (!resumen || resumen.total === 0) {
-      cont.innerHTML = '<div class="empty-state">No hay estudiantes registrados</div>';
-      return;
-    }
+  // ---- POR ESTUDIANTE: lista ----
+  let todosEstudiantes = [];
+  let estadisticaActual = null;
 
-    // Agrupar registros por estudiante (solo los de hoy disponibles en esta vista)
-    const mapa = {};
-    (resumen.registros || []).forEach(r => {
-      mapa[r.id] = { nombre: r.nombre, id: r.id, asistencias: (mapa[r.id]?.asistencias || 0) + 1 };
-    });
-
-    cont.innerHTML = `
-      <p style="font-size:13px;color:#555;margin-bottom:12px;">
-        Tasa de asistencia hoy: <strong>${resumen.total > 0 ? Math.round(resumen.presentes/resumen.total*100) : 0}%</strong>
-        (${resumen.presentes} de ${resumen.total} estudiantes)
-      </p>
-      <div class="prog-bar-wrap" style="margin-bottom:20px;">
-        <div class="prog-bar" style="width:${resumen.total > 0 ? Math.round(resumen.presentes/resumen.total*100) : 0}%"></div>
-      </div>
-      ${Object.values(mapa).map(s => `
-        <div class="student-row">
-          <div class="stu-avatar">${s.nombre.charAt(0).toUpperCase()}</div>
-          <div class="stu-info">
-            <div class="stu-nombre">${s.nombre}</div>
-            <div class="stu-id">${s.id}</div>
-          </div>
-          <span class="badge badge-p">Presente</span>
-        </div>
-      `).join('') || '<div class="empty-state">Sin asistencia hoy</div>'}
-    `;
+  function cargarListaEstudiantes() {
+    const cont = document.getElementById('stu-lista-body');
+    cont.innerHTML = '<div class="spinner"></div>';
+    google.script.run
+      .withSuccessHandler(data => {
+        todosEstudiantes = data || [];
+        renderListaEstudiantes(todosEstudiantes);
+      })
+      .withFailureHandler(() => {
+        cont.innerHTML = '<div class="empty-state">Error al cargar estudiantes</div>';
+      })
+      .obtenerEstudiantes();
   }
 
+  function filtrarEstudiantes() {
+    const q = document.getElementById('stu-buscar').value.toLowerCase();
+    renderListaEstudiantes(
+      todosEstudiantes.filter(e =>
+        e.nombre.toLowerCase().includes(q) ||
+        String(e.id).toLowerCase().includes(q) ||
+        (e.programa || '').toLowerCase().includes(q) ||
+        (e.grado || '').toLowerCase().includes(q)
+      )
+    );
+  }
+
+  function renderListaEstudiantes(lista) {
+    const cont = document.getElementById('stu-lista-body');
+    if (!lista.length) {
+      cont.innerHTML = '<div class="empty-state">No se encontraron estudiantes</div>';
+      return;
+    }
+    cont.innerHTML = lista.map(e => {
+      const ini = e.nombre.charAt(0).toUpperCase();
+      const meta = [e.programa, e.grado ? 'Grado ' + e.grado : '', e.seccion ? 'Sec. ' + e.seccion : '', e.sexo || '']
+        .filter(Boolean).join(' · ');
+      return `
+        <div class="stu-list-item" onclick="abrirEstudiante('${escapar(String(e.id))}')">
+          <div class="stu-avatar">${ini}</div>
+          <div class="stu-list-info">
+            <div class="stu-list-nombre">${e.nombre}</div>
+            <div class="stu-list-meta">${e.id} · ${meta}</div>
+          </div>
+          <span style="font-size:11px; color:#aaa;">Ver →</span>
+        </div>`;
+    }).join('');
+  }
+
+  function escapar(s) { return String(s).replace(/'/g, "\\'"); }
+
+  // ---- DETALLE INDIVIDUAL ----
+  function abrirEstudiante(id) {
+    document.getElementById('stu-lista').style.display  = 'none';
+    document.getElementById('stu-detalle').style.display = '';
+
+    // Mostrar skeleton
+    ['det-total','det-pct','det-puntuales','det-tarde','det-ausentes'].forEach(i =>
+      document.getElementById(i).textContent = '…');
+    document.getElementById('det-meses').innerHTML    = '<div class="spinner"></div>';
+    document.getElementById('det-historial').innerHTML = '<div class="spinner"></div>';
+
+    google.script.run
+      .withSuccessHandler(d => {
+        if (!d) {
+          document.getElementById('det-historial').innerHTML =
+            '<div class="empty-state">No se encontró el estudiante</div>';
+          return;
+        }
+        estadisticaActual = d;
+        renderDetalle(d);
+      })
+      .withFailureHandler(() => {
+        document.getElementById('det-historial').innerHTML =
+          '<div class="empty-state">Error al cargar estadísticas</div>';
+      })
+      .obtenerEstadisticasEstudiante(id);
+  }
+
+  function renderDetalle(d) {
+    const e = d.estudiante;
+
+    // Perfil
+    document.getElementById('det-avatar').textContent = e.nombre.charAt(0).toUpperCase();
+    document.getElementById('det-nombre').textContent = e.nombre;
+    document.getElementById('det-meta').innerHTML =
+      `ID: <strong>${e.id}</strong> &nbsp;·&nbsp; ${e.programa || '—'} &nbsp;·&nbsp; ` +
+      `Grado ${e.grado || '—'} &nbsp;·&nbsp; Sección ${e.seccion || '—'}` +
+      (e.sexo ? ` &nbsp;·&nbsp; ${e.sexo === 'M' ? '♂ Masculino' : '♀ Femenino'}` : '');
+
+    // KPIs
+    document.getElementById('det-total').textContent     = d.total;
+    document.getElementById('det-pct').textContent       = d.pct + '%';
+    document.getElementById('det-puntuales').textContent = d.puntuales;
+    document.getElementById('det-tarde').textContent     = d.tarde;
+    document.getElementById('det-ausentes').textContent  = d.ausentes;
+
+    // Color KPI pct según nivel
+    const pctEl = document.getElementById('det-pct').parentElement;
+    pctEl.className = 'det-kpi ' + (d.pct >= 80 ? 'verde' : d.pct >= 60 ? 'naranja' : 'rojo');
+
+    // Círculo SVG
+    const circ = 2 * Math.PI * 30; // 188.5
+    const dash  = (d.pct / 100) * circ;
+    document.getElementById('det-arc').setAttribute('stroke-dasharray', `${dash} ${circ - dash}`);
+    document.getElementById('det-arc').setAttribute('stroke', d.pct >= 80 ? '#2e7d32' : d.pct >= 60 ? '#e65100' : '#c62828');
+    document.getElementById('det-arc-txt').textContent = d.pct + '%';
+    document.getElementById('det-arc-txt').setAttribute('fill', d.pct >= 80 ? '#2e7d32' : d.pct >= 60 ? '#e65100' : '#c62828');
+
+    // Texto resumen
+    document.getElementById('det-resumen-texto').innerHTML =
+      `<strong>${d.presentes}</strong> de <strong>${d.total}</strong> clases con asistencia.<br>` +
+      `<strong style="color:#2e7d32;">${d.puntuales}</strong> puntuales &nbsp;·&nbsp; ` +
+      `<strong style="color:#e65100;">${d.tarde}</strong> con retraso &nbsp;·&nbsp; ` +
+      `<strong style="color:#c62828;">${d.ausentes}</strong> ausencias.`;
+
+    // Tendencia mensual
+    renderMeses(d.porMes);
+
+    // Historial
+    renderHistorialDetalle(d.registros);
+  }
+
+  function renderMeses(meses) {
+    const cont = document.getElementById('det-meses');
+    if (!meses || meses.length === 0) {
+      cont.innerHTML = '<div class="empty-state">Sin datos mensuales</div>';
+      return;
+    }
+    const MESES_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    cont.innerHTML = meses.map(m => {
+      const pct  = m.total > 0 ? Math.round(m.presentes / m.total * 100) : 0;
+      const cls  = pct >= 80 ? 'alta' : pct >= 60 ? 'media' : 'baja';
+      const [y, mo] = m.mes.split('-');
+      const label = MESES_ES[parseInt(mo) - 1] + ' ' + y;
+      return `
+        <div class="mes-row">
+          <div class="mes-label">${label}</div>
+          <div class="mes-bar-wrap"><div class="mes-bar ${cls}" style="width:${pct}%"></div></div>
+          <div class="mes-pct-txt ${cls === 'alta' ? 'pct-alta' : cls === 'media' ? 'pct-media' : 'pct-baja'}">${pct}%</div>
+          <div class="mes-cnt-txt">${m.presentes}/${m.total}</div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderHistorialDetalle(registros) {
+    const cont = document.getElementById('det-historial');
+    if (!registros || registros.length === 0) {
+      cont.innerHTML = '<div class="empty-state">Sin registros de asistencia</div>';
+      return;
+    }
+    cont.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>Hora</th><th>Materia</th><th>Grado</th><th>Estado</th></tr>
+          </thead>
+          <tbody>
+            ${registros.map(r => {
+              const cls  = r.obs === 'Puntual' ? 'hist-badge-p' : r.obs === 'Tarde' ? 'hist-badge-t' : 'hist-badge-a';
+              const icon = r.obs === 'Puntual' ? '✅' : r.obs === 'Tarde' ? '⚠' : '❌';
+              return `
+                <tr>
+                  <td>${r.fecha}</td>
+                  <td>${r.hora}</td>
+                  <td>${r.materia || '—'}</td>
+                  <td>${[r.grado, r.seccion].filter(Boolean).join(' / ') || '—'}</td>
+                  <td><span class="badge ${cls}">${icon} ${r.obs}</span></td>
+                </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:12px;color:#888;margin-top:8px;">${registros.length} registros en total</p>`;
+  }
+
+  function volverLista() {
+    document.getElementById('stu-detalle').style.display = 'none';
+    document.getElementById('stu-lista').style.display  = '';
+    estadisticaActual = null;
+  }
+
+  function exportarEstudiante() {
+    if (!estadisticaActual || !estadisticaActual.registros.length) {
+      alert('No hay datos para exportar.');
+      return;
+    }
+    const e = estadisticaActual.estudiante;
+    const cab = ['Fecha','Hora','Materia','Grado','Sección','Estado'];
+    const filas = estadisticaActual.registros.map(r =>
+      [r.fecha, r.hora, r.materia, r.grado, r.seccion, r.obs]);
+    const csv = [cab, ...filas]
+      .map(f => f.map(c => `"${String(c || '').replace(/"/g,'""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `asistencia_${e.id}_${e.nombre.replace(/\s+/g,'_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function renderResumenEstudiantes() { /* reemplazado por la nueva vista */ }
+
   // ---- PESTAÑAS ----
+  let estudiantesYaCargados = false;
   function cambiarTab(nombre, btn) {
     tabActiva = nombre;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + nombre).classList.add('active');
+    if (nombre === 'estudiantes' && !estudiantesYaCargados) {
+      estudiantesYaCargados = true;
+      cargarListaEstudiantes();
+    }
   }
 
   // ---- EXPORTAR CSV ----

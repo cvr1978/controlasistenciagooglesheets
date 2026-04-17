@@ -552,6 +552,70 @@ function obtenerResumenHoy() {
   };
 }
 
+/**
+ * Devuelve estadísticas completas de asistencia para un estudiante específico.
+ */
+function obtenerEstadisticasEstudiante(id) {
+  try {
+    const ss     = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetE = ss.getSheetByName(SHEET_ESTUDIANTES);
+    const sheetA = ss.getSheetByName(SHEET_ASISTENCIA);
+
+    const est = _buscarEstudiante(sheetE, id.toString().trim());
+    if (!est) return null;
+
+    const registros = [];
+    const porMes    = {};
+
+    if (sheetA && sheetA.getLastRow() > 1) {
+      sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(r => {
+        if (r[COL_ASIST_ID - 1].toString().trim() !== id.toString().trim()) return;
+        const f = r[COL_ASIST_FECHA - 1];
+        if (!f) return;
+        const fStr = _toDateStr(f);
+        const mes  = fStr.substring(0, 7);
+        const obs  = r[COL_ASIST_OBS - 1].toString();
+        const hora = r[COL_ASIST_HORA - 1];
+
+        registros.push({
+          fecha:   fStr,
+          hora:    hora ? hora.toString().substring(0, 5) : '',
+          materia: r[COL_ASIST_MATERIA - 1].toString(),
+          grado:   r[COL_ASIST_GRADO   - 1].toString(),
+          seccion: r[COL_ASIST_SECCION - 1].toString(),
+          obs:     obs
+        });
+
+        if (!porMes[mes]) porMes[mes] = { total: 0, presentes: 0, puntuales: 0, tarde: 0, ausentes: 0 };
+        porMes[mes].total++;
+        if      (obs === 'Puntual') { porMes[mes].presentes++; porMes[mes].puntuales++; }
+        else if (obs === 'Tarde')   { porMes[mes].presentes++; porMes[mes].tarde++;     }
+        else                        { porMes[mes].ausentes++;                           }
+      });
+    }
+
+    registros.sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+    const total     = registros.length;
+    const presentes = registros.filter(r => r.obs !== 'Ausente').length;
+    const puntuales = registros.filter(r => r.obs === 'Puntual').length;
+    const tarde     = registros.filter(r => r.obs === 'Tarde').length;
+    const ausentes  = registros.filter(r => r.obs === 'Ausente').length;
+    const pct       = total > 0 ? Math.round(presentes / total * 100) : 0;
+
+    return {
+      estudiante: est,
+      total, presentes, puntuales, tarde, ausentes, pct,
+      porMes: Object.entries(porMes)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([mes, v]) => ({ mes, ...v })),
+      registros
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
 function obtenerAsistenciaPorFecha(fechaInicio, fechaFin) {
   const ss     = SpreadsheetApp.getActiveSpreadsheet();
   const sheetA = ss.getSheetByName(SHEET_ASISTENCIA);
