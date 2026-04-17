@@ -496,24 +496,35 @@
       aspectRatio: 1.0
     };
 
-    Html5Qrcode.getCameras().then(cameras => {
-      if (!cameras || cameras.length === 0) {
-        mostrarEstado(false, 'No se encontró cámara disponible.');
-        return;
-      }
-      // Preferir cámara trasera
-      const camId = cameras.find(c => /back|rear|environment/i.test(c.label))?.id || cameras[cameras.length - 1].id;
+    // Usar facingMode en lugar de getCameras() — mayor compatibilidad en navegadores móviles
+    // getCameras() falla en iframes y en algunos browsers antes de que el permiso sea concedido
+    const _activarEscaner = () => {
+      escaneando = true;
+      document.getElementById('dot').className = 'dot active';
+      document.getElementById('status-text').textContent = 'Escáner activo — apunta al QR del carnet';
+      document.getElementById('btn-stop').style.display = '';
+      document.getElementById('btn-start').style.display = 'none';
+    };
 
-      html5QrCode.start(camId, config, onQrSuccess, onQrError)
-        .then(() => {
-          escaneando = true;
-          document.getElementById('dot').className = 'dot active';
-          document.getElementById('status-text').textContent = 'Escáner activo — apunta al QR del carnet';
-          document.getElementById('btn-stop').style.display = '';
-          document.getElementById('btn-start').style.display = 'none';
-        })
-        .catch(err => mostrarEstado(false, 'No se pudo iniciar: ' + err));
-    }).catch(() => mostrarEstado(false, 'Error al acceder a la cámara.'));
+    const _errorEscaner = err => {
+      let msg = 'No se pudo acceder a la cámara.';
+      const s = String(err).toLowerCase();
+      if (s.includes('denied') || s.includes('permission') || s.includes('notallowed')) {
+        msg = 'Permiso de cámara denegado. Habilítalo en la configuración del navegador y recarga la página.';
+      } else if (s.includes('not found') || s.includes('nodevices') || s.includes('devicenotfound')) {
+        msg = 'No se encontró ninguna cámara en este dispositivo.';
+      }
+      mostrarEstado(false, msg);
+    };
+
+    // 1° intento: cámara trasera (móviles); 2° respaldo: cualquier cámara
+    html5QrCode.start({ facingMode: 'environment' }, config, onQrSuccess, onQrError)
+      .then(_activarEscaner)
+      .catch(() => {
+        html5QrCode.start({ facingMode: 'user' }, config, onQrSuccess, onQrError)
+          .then(_activarEscaner)
+          .catch(_errorEscaner);
+      });
   }
 
   // ---- DETENER ----
