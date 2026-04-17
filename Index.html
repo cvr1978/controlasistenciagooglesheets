@@ -376,9 +376,6 @@
   <div class="card">
     <div class="card-header">
       <span>⌨ Registro Manual por Grupo</span>
-      <button class="btn btn-success btn-sm" id="btn-guardar-grupo" onclick="guardarListaGrupo()" style="display:none;">
-        💾 Guardar
-      </button>
     </div>
     <div class="card-body">
 
@@ -425,6 +422,13 @@
         </div>
 
         <div id="mg-body"></div>
+
+        <div id="mg-guardar-wrap" style="display:none; margin-top:14px;">
+          <button class="btn btn-success" style="width:100%;justify-content:center;"
+            id="btn-guardar-grupo" onclick="guardarListaGrupo()">
+            💾 Guardar asistencia
+          </button>
+        </div>
       </div>
 
     </div>
@@ -569,13 +573,13 @@
 
     document.getElementById('mg-lista').style.display = '';
     document.getElementById('mg-body').innerHTML = '<div style="text-align:center;padding:16px;"><div class="spinner"></div></div>';
-    document.getElementById('btn-guardar-grupo').style.display = 'none';
+    document.getElementById('mg-guardar-wrap').style.display = 'none';
 
     google.script.run
       .withSuccessHandler(data => {
         grupoEstudiantes = data;
         renderGrupo(data);
-        document.getElementById('btn-guardar-grupo').style.display = data.length ? '' : 'none';
+        document.getElementById('mg-guardar-wrap').style.display = data.length ? '' : 'none';
       })
       .withFailureHandler(() => {
         document.getElementById('mg-body').innerHTML = '<div class="empty-state">Error al cargar</div>';
@@ -671,7 +675,7 @@
         setTimeout(() => { el.style.display = 'none'; }, 5000);
 
         document.getElementById('btn-guardar-grupo').disabled = false;
-        document.getElementById('btn-guardar-grupo').textContent = '💾 Guardar';
+        document.getElementById('btn-guardar-grupo').innerHTML = '💾 Guardar asistencia';
 
         if (res.ok) {
           cargarListaGrupo();     // recargar lista
@@ -685,7 +689,7 @@
         el.className    = 'error';
         el.style.display = 'block';
         document.getElementById('btn-guardar-grupo').disabled = false;
-        document.getElementById('btn-guardar-grupo').textContent = '💾 Guardar';
+        document.getElementById('btn-guardar-grupo').innerHTML = '💾 Guardar asistencia';
       })
       .registrarAsistenciaMasiva(registros, materia, fecha);
   }

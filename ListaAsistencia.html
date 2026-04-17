@@ -284,9 +284,6 @@
   <div class="card" id="card-lista" style="display:none;">
     <div class="card-header">
       <span id="lista-titulo">Estudiantes</span>
-      <button class="btn btn-success btn-sm" id="btn-guardar" onclick="guardarAsistencia()" disabled>
-        💾 Guardar asistencia
-      </button>
     </div>
     <div class="card-body">
 
@@ -309,6 +306,13 @@
       </div>
 
       <div id="lista-body"><div class="spinner"></div></div>
+
+      <div style="margin-top:14px;">
+        <button class="btn btn-success" style="width:100%;justify-content:center;"
+          id="btn-guardar" onclick="guardarAsistencia()" disabled>
+          💾 Guardar asistencia
+        </button>
+      </div>
 
     </div>
   </div>
