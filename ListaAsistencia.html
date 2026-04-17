@@ -199,9 +199,9 @@
 <nav>
   <div class="brand">📋 Lista de Asistencia</div>
   <div class="nav-links">
-    <a href="?"                  target="_top">📷 Escáner</a>
-    <a href="?page=dashboard"    target="_top">📊 Dashboard</a>
-    <a href="?page=estudiantes"  target="_top">👥 Estudiantes</a>
+    <a onclick="nav('')"             href="javascript:void(0)">📷 Escáner</a>
+    <a onclick="nav('dashboard')"    href="javascript:void(0)">📊 Dashboard</a>
+    <a onclick="nav('estudiantes')"  href="javascript:void(0)">👥 Estudiantes</a>
   </div>
 </nav>
 
@@ -323,8 +323,17 @@
   let estudiantesActuales = [];
   let filtrosDisponibles  = { carreras: [], grados: [], secciones: [] };
 
+  // ---- NAVEGACIÓN ----
+  let _webAppUrl = '';
+  function nav(page) {
+    const go = u => { window.top.location.href = u + (page ? '?page=' + page : ''); };
+    if (_webAppUrl) go(_webAppUrl);
+    else google.script.run.withSuccessHandler(u => { _webAppUrl = u; go(u); }).getWebAppUrl();
+  }
+
   // ---- INIT ----
   window.onload = () => {
+    google.script.run.withSuccessHandler(u => { _webAppUrl = u; }).getWebAppUrl();
     const hoy = new Date().toISOString().split('T')[0];
     document.getElementById('f-fecha').value = hoy;
 

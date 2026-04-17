@@ -359,9 +359,9 @@
 <nav>
   <div class="brand">📷 Asistencia QR</div>
   <div class="nav-links">
-    <a href="?page=lista"        target="_top">📋 Lista</a>
-    <a href="?page=dashboard"    target="_top">📊 Dashboard</a>
-    <a href="?page=estudiantes"  target="_top">👥 Estudiantes</a>
+    <a onclick="nav('lista')"        href="javascript:void(0)">📋 Lista</a>
+    <a onclick="nav('dashboard')"    href="javascript:void(0)">📊 Dashboard</a>
+    <a onclick="nav('estudiantes')"  href="javascript:void(0)">👥 Estudiantes</a>
   </div>
 </nav>
 
@@ -905,8 +905,17 @@
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // ---- NAVEGACIÓN ----
+  let _webAppUrl = '';
+  function nav(page) {
+    const go = u => { window.top.location.href = u + (page ? '?page=' + page : ''); };
+    if (_webAppUrl) go(_webAppUrl);
+    else google.script.run.withSuccessHandler(u => { _webAppUrl = u; go(u); }).getWebAppUrl();
+  }
+
   // ---- INIT ----
   window.onload = () => {
+    google.script.run.withSuccessHandler(u => { _webAppUrl = u; }).getWebAppUrl();
     cargarHistorialHoy();
     cargarFiltrosGrupo();
     // No auto-iniciar cámara en vivo: el iframe de GAS la bloquea.

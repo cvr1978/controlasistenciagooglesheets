@@ -117,9 +117,9 @@
 <nav>
   <div class="brand">👥 Gestión de Estudiantes</div>
   <div class="nav-links">
-    <a href="?"               target="_top">📷 Escáner</a>
-    <a href="?page=lista"     target="_top">📋 Lista</a>
-    <a href="?page=dashboard" target="_top">📊 Dashboard</a>
+    <a onclick="nav('')"            href="javascript:void(0)">📷 Escáner</a>
+    <a onclick="nav('lista')"       href="javascript:void(0)">📋 Lista</a>
+    <a onclick="nav('dashboard')"   href="javascript:void(0)">📊 Dashboard</a>
   </div>
 </nav>
 
@@ -390,8 +390,19 @@
     setTimeout(() => { el.style.display = 'none'; }, 4000);
   }
 
+  // ---- NAVEGACIÓN ----
+  let _webAppUrl = '';
+  function nav(page) {
+    const go = u => { window.top.location.href = u + (page ? '?page=' + page : ''); };
+    if (_webAppUrl) go(_webAppUrl);
+    else google.script.run.withSuccessHandler(u => { _webAppUrl = u; go(u); }).getWebAppUrl();
+  }
+
   // ---- INIT ----
-  window.onload = cargarEstudiantes;
+  window.onload = () => {
+    google.script.run.withSuccessHandler(u => { _webAppUrl = u; }).getWebAppUrl();
+    cargarEstudiantes();
+  };
 </script>
 </body>
 </html>
