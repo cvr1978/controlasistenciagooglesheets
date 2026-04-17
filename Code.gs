@@ -3,10 +3,11 @@
 // ============================================================
 
 // Nombres de las hojas del spreadsheet
-const SHEET_ESTUDIANTES = 'Estudiantes';
-const SHEET_ASISTENCIA  = 'Asistencia';
-const SHEET_CONFIG      = 'Configuracion';
-const SHEET_RESUMEN     = 'Resumen';
+const SHEET_ESTUDIANTES  = 'Estudiantes';
+const SHEET_ASISTENCIA   = 'Asistencia';
+const SHEET_CONFIG       = 'Configuracion';
+const SHEET_RESUMEN      = 'Resumen';
+const SHEET_ESTADISTICAS = 'Estadísticas';
 
 // Columnas hoja Estudiantes: ID | Nombre | Carrera | Email | Estado | Grado | Sección | Sexo
 const COL_EST_ID       = 1;
@@ -123,6 +124,9 @@ function inicializarSpreadsheet() {
 
   // ---- Hoja Resumen ----
   _obtenerOCrearHojaResumen(ss);
+
+  // ---- Hoja Estadísticas ----
+  _setupHojaEstadisticas(ss);
 
   SpreadsheetApp.getUi().alert('✅ Spreadsheet inicializado correctamente.');
 }
@@ -794,6 +798,278 @@ function _appendAsistencia(sheet, fecha, hora, est, materia, obs) {
 }
 
 // ------------------------------------------------------------
+// HOJA ESTADÍSTICAS INDIVIDUAL
+// ------------------------------------------------------------
+
+/**
+ * Trigger simple: se ejecuta cuando el usuario edita el desplegable de
+ * la hoja Estadísticas (celda B2) para seleccionar un estudiante.
+ */
+function onEdit(e) {
+  if (!e || !e.range) return;
+  const sheet = e.range.getSheet();
+  if (sheet.getName() !== SHEET_ESTADISTICAS) return;
+  if (e.range.getA1Notation() !== 'B2') return;
+  const valor = (e.value || '').toString().trim();
+  if (!valor || valor.startsWith('—')) {
+    _limpiarAreaEstadisticas(sheet);
+    return;
+  }
+  // El desplegable tiene formato "ID — Nombre"
+  const id = valor.split(' — ')[0].trim();
+  actualizarEstadisticasHoja(sheet, id);
+}
+
+/**
+ * Crea (o reinicia) la hoja Estadísticas con el desplegable de estudiantes.
+ * Llamar desde el menú: 🎓 Asistencia QR > 📊 Estadísticas por Estudiante.
+ */
+function crearHojaEstadisticas() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  _setupHojaEstadisticas(ss);
+  SpreadsheetApp.getUi().alert(
+    '✅ Hoja "Estadísticas" lista.\n\n' +
+    'Usa el desplegable en la celda B2 para seleccionar un estudiante\n' +
+    'y ver automáticamente sus estadísticas de asistencia.'
+  );
+}
+
+/** Lógica interna de creación (sin alert, usable desde inicializarSpreadsheet). */
+function _setupHojaEstadisticas(ss) {
+  let sheet = ss.getSheetByName(SHEET_ESTADISTICAS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_ESTADISTICAS);
+  } else {
+    sheet.clear();
+  }
+
+  // Anchos de columna
+  [210, 230, 120, 110, 170, 110, 130].forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+  sheet.setRowHeight(1, 44);
+  sheet.setRowHeight(2, 36);
+
+  // ── Fila 1: Título ──
+  sheet.getRange('A1:G1').merge()
+    .setValue('📊  ESTADÍSTICAS DE ASISTENCIA INDIVIDUAL')
+    .setBackground('#1a73e8').setFontColor('#ffffff')
+    .setFontSize(15).setFontWeight('bold')
+    .setHorizontalAlignment('center').setVerticalAlignment('middle');
+
+  // ── Fila 2: Selector ──
+  sheet.getRange('A2')
+    .setValue('👤  Seleccionar Estudiante:')
+    .setFontWeight('bold').setFontSize(11)
+    .setBackground('#e8f0fe').setFontColor('#1a73e8')
+    .setVerticalAlignment('middle');
+
+  // Construir lista para el desplegable
+  const sheetE = ss.getSheetByName(SHEET_ESTUDIANTES);
+  const opciones = ['— Selecciona un estudiante —'];
+  if (sheetE && sheetE.getLastRow() > 1) {
+    sheetE.getRange(2, 1, sheetE.getLastRow() - 1, 2).getValues().forEach(r => {
+      if (r[0]) opciones.push(r[0].toString().trim() + ' — ' + r[1].toString().trim());
+    });
+  }
+
+  const regla = SpreadsheetApp.newDataValidation()
+    .requireValueInList(opciones, true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange('B2')
+    .setDataValidation(regla)
+    .setValue(opciones[0])
+    .setBackground('#ffffff').setFontSize(11)
+    .setBorder(true, true, true, true, false, false,
+      '#1a73e8', SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+
+  sheet.getRange('C2:G2').merge()
+    .setValue('⬅  Elige un estudiante del desplegable para ver sus estadísticas')
+    .setFontColor('#999999').setFontStyle('italic').setFontSize(10)
+    .setVerticalAlignment('middle');
+
+  sheet.setFrozenRows(2);
+  return sheet;
+}
+
+/**
+ * Rellena la hoja Estadísticas con los datos del estudiante indicado.
+ */
+function actualizarEstadisticasHoja(sheet, studentId) {
+  const ss  = SpreadsheetApp.getActiveSpreadsheet();
+  const shE = ss.getSheetByName(SHEET_ESTUDIANTES);
+  const shA = ss.getSheetByName(SHEET_ASISTENCIA);
+
+  const est = _buscarEstudiante(shE, studentId);
+  if (!est) return;
+
+  // ── Calcular estadísticas ──
+  const registros = [];
+  const porMes    = {};
+
+  if (shA && shA.getLastRow() > 1) {
+    shA.getRange(2, 1, shA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(r => {
+      if (r[COL_ASIST_ID - 1].toString().trim() !== studentId.toString().trim()) return;
+      const f = r[COL_ASIST_FECHA - 1];
+      if (!f) return;
+      const fStr = _toDateStr(f);
+      const mes  = fStr.substring(0, 7);
+      const obs  = r[COL_ASIST_OBS     - 1].toString();
+      const hora = r[COL_ASIST_HORA    - 1];
+      registros.push({
+        fecha:   fStr,
+        hora:    hora ? hora.toString().substring(0, 5) : '',
+        materia: r[COL_ASIST_MATERIA  - 1].toString(),
+        grado:   r[COL_ASIST_GRADO    - 1].toString(),
+        seccion: r[COL_ASIST_SECCION  - 1].toString(),
+        obs:     obs
+      });
+      if (!porMes[mes]) porMes[mes] = { total:0, presentes:0, puntuales:0, tarde:0, ausentes:0 };
+      porMes[mes].total++;
+      if      (obs === 'Puntual') { porMes[mes].presentes++; porMes[mes].puntuales++; }
+      else if (obs === 'Tarde')   { porMes[mes].presentes++; porMes[mes].tarde++;     }
+      else                        { porMes[mes].ausentes++;                           }
+    });
+  }
+  registros.sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+  const total     = registros.length;
+  const presentes = registros.filter(r => r.obs !== 'Ausente').length;
+  const puntuales = registros.filter(r => r.obs === 'Puntual').length;
+  const tarde     = registros.filter(r => r.obs === 'Tarde').length;
+  const ausentes  = registros.filter(r => r.obs === 'Ausente').length;
+  const pct       = total > 0 ? Math.round(presentes / total * 100) : 0;
+  const pctColor  = pct >= 80 ? '#2e7d32' : pct >= 60 ? '#e65100' : '#c62828';
+  const meses     = Object.entries(porMes)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([mes, v]) => ({ mes, ...v }));
+
+  // ── Limpiar área de contenido (fila 3 en adelante) ──
+  _limpiarAreaEstadisticas(sheet);
+  let fila = 3;
+
+  // ── PERFIL ──
+  sheet.getRange(fila, 1, 1, 7).merge()
+    .setValue('👤  INFORMACIÓN DEL ESTUDIANTE')
+    .setBackground('#1565c0').setFontColor('#ffffff')
+    .setFontWeight('bold').setFontSize(11).setHorizontalAlignment('left')
+    .setVerticalAlignment('middle');
+  sheet.setRowHeight(fila, 28); fila++;
+
+  const perfilDatos = [
+    ['Nombre',   est.nombre,                  'ID / Código', est.id],
+    ['Carrera',  est.programa || '—',         'Grado',       est.grado   || '—'],
+    ['Sección',  est.seccion  || '—',         'Sexo',        est.sexo === 'M' ? 'Masculino' : est.sexo === 'F' ? 'Femenino' : '—'],
+    ['Estado',   est.estado   || '—',         'Email',       est.email   || '—']
+  ];
+  perfilDatos.forEach(([l1, v1, l2, v2]) => {
+    sheet.getRange(fila, 1).setValue(l1).setFontWeight('bold').setBackground('#e8f0fe').setFontColor('#1a73e8').setVerticalAlignment('middle');
+    sheet.getRange(fila, 2, 1, 2).merge().setValue(v1).setBackground('#ffffff').setVerticalAlignment('middle');
+    sheet.getRange(fila, 4).setValue(l2).setFontWeight('bold').setBackground('#e8f0fe').setFontColor('#1a73e8').setVerticalAlignment('middle');
+    sheet.getRange(fila, 5, 1, 3).merge().setValue(v2).setBackground('#ffffff').setVerticalAlignment('middle');
+    sheet.setRowHeight(fila, 22); fila++;
+  });
+  fila++;
+
+  // ── RESUMEN ──
+  sheet.getRange(fila, 1, 1, 7).merge()
+    .setValue('📊  RESUMEN GENERAL DE ASISTENCIA')
+    .setBackground('#1565c0').setFontColor('#ffffff')
+    .setFontWeight('bold').setFontSize(11).setHorizontalAlignment('left')
+    .setVerticalAlignment('middle');
+  sheet.setRowHeight(fila, 28); fila++;
+
+  sheet.getRange(fila, 1, 1, 6).setValues([['Total Clases','Presentes','Ausentes','Puntuales','Tardíos','% Asistencia']])
+    .setBackground('#bbdefb').setFontColor('#0d47a1').setFontWeight('bold')
+    .setHorizontalAlignment('center').setVerticalAlignment('middle');
+  sheet.setRowHeight(fila, 22); fila++;
+
+  sheet.getRange(fila, 1).setValue(total)    .setHorizontalAlignment('center').setFontSize(16).setFontWeight('bold').setBackground('#ffffff');
+  sheet.getRange(fila, 2).setValue(presentes).setHorizontalAlignment('center').setFontSize(16).setFontWeight('bold').setFontColor('#2e7d32').setBackground('#d9ead3');
+  sheet.getRange(fila, 3).setValue(ausentes) .setHorizontalAlignment('center').setFontSize(16).setFontWeight('bold').setFontColor('#c62828').setBackground('#fce8e6');
+  sheet.getRange(fila, 4).setValue(puntuales).setHorizontalAlignment('center').setFontSize(16).setFontWeight('bold').setBackground('#ffffff');
+  sheet.getRange(fila, 5).setValue(tarde)    .setHorizontalAlignment('center').setFontSize(16).setFontWeight('bold').setFontColor('#e65100').setBackground('#fff3e0');
+  sheet.getRange(fila, 6).setValue(pct + '%').setHorizontalAlignment('center').setFontSize(18).setFontWeight('bold').setFontColor(pctColor).setBackground('#ffffff');
+  sheet.setRowHeight(fila, 36); fila += 2;
+
+  // ── TENDENCIA MENSUAL ──
+  if (meses.length > 0) {
+    sheet.getRange(fila, 1, 1, 7).merge()
+      .setValue('📅  TENDENCIA MENSUAL')
+      .setBackground('#1565c0').setFontColor('#ffffff')
+      .setFontWeight('bold').setFontSize(11).setHorizontalAlignment('left')
+      .setVerticalAlignment('middle');
+    sheet.setRowHeight(fila, 28); fila++;
+
+    sheet.getRange(fila, 1, 1, 7).setValues([['Mes','Total','Presentes','Ausentes','Puntuales','Tardíos','% Asist.']])
+      .setBackground('#bbdefb').setFontColor('#0d47a1').setFontWeight('bold')
+      .setHorizontalAlignment('center');
+    sheet.setRowHeight(fila, 22); fila++;
+
+    const MESES_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    meses.forEach(m => {
+      const p   = m.total > 0 ? Math.round(m.presentes / m.total * 100) : 0;
+      const pc  = p >= 80 ? '#2e7d32' : p >= 60 ? '#e65100' : '#c62828';
+      const bg  = p >= 80 ? '#d9ead3' : p >= 60 ? '#fff3e0' : '#fce8e6';
+      const [y, mo] = m.mes.split('-');
+      const label   = MESES_ES[parseInt(mo) - 1] + ' ' + y;
+      sheet.getRange(fila, 1, 1, 7).setBackground(bg).setHorizontalAlignment('center');
+      sheet.getRange(fila, 1).setValue(label)    .setFontWeight('bold').setHorizontalAlignment('left');
+      sheet.getRange(fila, 2).setValue(m.total);
+      sheet.getRange(fila, 3).setValue(m.presentes).setFontColor('#2e7d32');
+      sheet.getRange(fila, 4).setValue(m.ausentes) .setFontColor('#c62828');
+      sheet.getRange(fila, 5).setValue(m.puntuales);
+      sheet.getRange(fila, 6).setValue(m.tarde)    .setFontColor('#e65100');
+      sheet.getRange(fila, 7).setValue(p + '%').setFontWeight('bold').setFontColor(pc);
+      sheet.setRowHeight(fila, 20); fila++;
+    });
+    fila++;
+  }
+
+  // ── HISTORIAL COMPLETO ──
+  sheet.getRange(fila, 1, 1, 7).merge()
+    .setValue('🗒  HISTORIAL COMPLETO  (' + registros.length + ' registros)')
+    .setBackground('#1565c0').setFontColor('#ffffff')
+    .setFontWeight('bold').setFontSize(11).setHorizontalAlignment('left')
+    .setVerticalAlignment('middle');
+  sheet.setRowHeight(fila, 28); fila++;
+
+  sheet.getRange(fila, 1, 1, 6).setValues([['Fecha','Hora','Materia','Grado','Sección','Estado']])
+    .setBackground('#bbdefb').setFontColor('#0d47a1').setFontWeight('bold')
+    .setHorizontalAlignment('center');
+  sheet.setRowHeight(fila, 22); fila++;
+
+  if (registros.length === 0) {
+    sheet.getRange(fila, 1, 1, 6).merge()
+      .setValue('Sin registros de asistencia')
+      .setFontColor('#aaaaaa').setHorizontalAlignment('center').setFontStyle('italic');
+    sheet.setRowHeight(fila, 24);
+  } else {
+    // Batch write para rendimiento
+    const filasDatos = registros.map(r => {
+      const icon = r.obs === 'Puntual' ? '✅' : r.obs === 'Tarde' ? '⚠️' : '❌';
+      return [r.fecha, r.hora, r.materia || '—', r.grado || '—', r.seccion || '—', icon + ' ' + r.obs];
+    });
+    sheet.getRange(fila, 1, filasDatos.length, 6).setValues(filasDatos).setHorizontalAlignment('center');
+    sheet.getRange(fila, 1, filasDatos.length, 1).setHorizontalAlignment('left');
+
+    registros.forEach((r, idx) => {
+      const bg = r.obs === 'Puntual' ? '#d9ead3' : r.obs === 'Tarde' ? '#fff3e0' : '#fce8e6';
+      const fc = r.obs === 'Puntual' ? '#2e7d32' : r.obs === 'Tarde' ? '#e65100' : '#c62828';
+      sheet.getRange(fila + idx, 1, 1, 6).setBackground(bg);
+      sheet.getRange(fila + idx, 6).setFontWeight('bold').setFontColor(fc);
+      sheet.setRowHeight(fila + idx, 20);
+    });
+  }
+}
+
+function _limpiarAreaEstadisticas(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow >= 3) {
+    sheet.getRange(3, 1, lastRow - 2, 7).clear();
+  }
+}
+
+// ------------------------------------------------------------
 // MENÚ EN GOOGLE SHEETS
 // ------------------------------------------------------------
 
@@ -804,6 +1080,7 @@ function onOpen() {
     .addItem('📋 Lista de Asistencia',       'abrirLista')
     .addItem('📊 Ver Dashboard',             'abrirDashboard')
     .addItem('👥 Gestionar Estudiantes',     'abrirEstudiantes')
+    .addItem('📊 Estadísticas por Estudiante', 'crearHojaEstadisticas')
     .addSeparator()
     .addItem('⚙ Inicializar Spreadsheet',   'inicializarSpreadsheet')
     .addItem('🔗 Obtener URL de la App',     'mostrarUrl')
