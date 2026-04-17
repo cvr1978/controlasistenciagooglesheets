@@ -355,6 +355,20 @@
       </div>
       <div id="reader"></div>
 
+      <!-- Ayuda cuando la cámara falla (iframe de Apps Script) -->
+      <div id="cam-help" style="display:none; background:#fff3e0; border-left:4px solid #e65100; border-radius:8px; padding:12px 14px; margin-top:12px; font-size:13px; color:#5d3c00;">
+        <div style="font-weight:700; margin-bottom:6px;">⚠ ¿Problemas con la cámara?</div>
+        <div id="cam-help-msg" style="margin-bottom:10px;"></div>
+        <div style="font-size:12px; line-height:1.55;">
+          1. Algunas veces el iframe de Google Apps Script bloquea la cámara.<br>
+          2. Prueba a <strong>abrir la app en una ventana nueva</strong>:
+        </div>
+        <button class="btn btn-primary" style="margin-top:8px; width:100%; justify-content:center;"
+          onclick="abrirEnVentanaNueva()">
+          🔗 Abrir en ventana nueva
+        </button>
+      </div>
+
       <!-- Resultado del escaneo -->
       <div id="resultado">
         <div class="resultado-icon" id="res-icon"></div>
@@ -496,35 +510,68 @@
       aspectRatio: 1.0
     };
 
-    // Usar facingMode en lugar de getCameras() — mayor compatibilidad en navegadores móviles
-    // getCameras() falla en iframes y en algunos browsers antes de que el permiso sea concedido
     const _activarEscaner = () => {
       escaneando = true;
       document.getElementById('dot').className = 'dot active';
       document.getElementById('status-text').textContent = 'Escáner activo — apunta al QR del carnet';
       document.getElementById('btn-stop').style.display = '';
       document.getElementById('btn-start').style.display = 'none';
+      document.getElementById('cam-help').style.display = 'none';
     };
 
     const _errorEscaner = err => {
+      const errStr = String(err && err.message || err);
+      const s = errStr.toLowerCase();
       let msg = 'No se pudo acceder a la cámara.';
-      const s = String(err).toLowerCase();
-      if (s.includes('denied') || s.includes('permission') || s.includes('notallowed')) {
-        msg = 'Permiso de cámara denegado. Habilítalo en la configuración del navegador y recarga la página.';
-      } else if (s.includes('not found') || s.includes('nodevices') || s.includes('devicenotfound')) {
+
+      if (s.includes('notallowederror') || s.includes('denied') || s.includes('permission')) {
+        msg = 'Permiso de cámara denegado por el navegador o bloqueado por el iframe.';
+      } else if (s.includes('notfounderror') || s.includes('no devices') || s.includes('devicenotfound')) {
         msg = 'No se encontró ninguna cámara en este dispositivo.';
+      } else if (s.includes('notreadable') || s.includes('trackstarterror')) {
+        msg = 'La cámara está en uso por otra aplicación.';
+      } else if (s.includes('overconstrained')) {
+        msg = 'No hay cámara que cumpla los requisitos solicitados.';
+      } else if (errStr && errStr !== 'undefined') {
+        msg = 'Error: ' + errStr;
       }
+
       mostrarEstado(false, msg);
+      // Mostrar la ayuda con botón para abrir en ventana nueva
+      document.getElementById('cam-help-msg').textContent = msg;
+      document.getElementById('cam-help').style.display = 'block';
     };
 
+    // Verificar API disponible
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      _errorEscaner('El navegador no soporta acceso a la cámara (navigator.mediaDevices).');
+      return;
+    }
+
     // 1° intento: cámara trasera (móviles); 2° respaldo: cualquier cámara
-    html5QrCode.start({ facingMode: 'environment' }, config, onQrSuccess, onQrError)
+    html5QrCode.start({ facingMode: { exact: 'environment' } }, config, onQrSuccess, onQrError)
       .then(_activarEscaner)
       .catch(() => {
-        html5QrCode.start({ facingMode: 'user' }, config, onQrSuccess, onQrError)
+        html5QrCode.start({ facingMode: 'environment' }, config, onQrSuccess, onQrError)
           .then(_activarEscaner)
-          .catch(_errorEscaner);
+          .catch(() => {
+            html5QrCode.start({ facingMode: 'user' }, config, onQrSuccess, onQrError)
+              .then(_activarEscaner)
+              .catch(_errorEscaner);
+          });
       });
+  }
+
+  // Abre la app en una ventana nueva — esto evita las restricciones
+  // del iframe interno de Google Apps Script (feature-policy)
+  function abrirEnVentanaNueva() {
+    google.script.run
+      .withSuccessHandler(url => { window.open(url, '_blank'); })
+      .withFailureHandler(() => {
+        // Intento de respaldo: usar la URL actual si falla la llamada
+        window.open(window.location.href, '_blank');
+      })
+      .getWebAppUrl();
   }
 
   // ---- DETENER ----
