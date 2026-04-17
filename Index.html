@@ -63,7 +63,29 @@
     }
     .card-body { padding: 20px; }
 
-    /* ---- SCANNER ---- */
+    /* ---- SCAN SECTIONS ---- */
+    .scan-section {
+      border: 1px solid #e8f0fe;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      background: #fafbff;
+    }
+    .scan-label {
+      font-size: 12px; font-weight: 700; color: #1a73e8;
+      text-transform: uppercase; letter-spacing: .4px;
+      margin-bottom: 10px;
+    }
+    .scan-hint {
+      font-size: 11px; color: #999; margin-top: 7px; text-align: center;
+    }
+    .qr-manual-input {
+      flex: 1; padding: 10px 12px; border: 2px solid #ddd;
+      border-radius: 8px; font-size: 14px; outline: none; transition: border-color .2s;
+    }
+    .qr-manual-input:focus { border-color: #1a73e8; }
+
+    /* ---- SCANNER (live) ---- */
     #reader {
       width: 100%;
       border-radius: 12px;
@@ -349,27 +371,50 @@
   <div class="card">
     <div class="card-header">📷 Escáner de QR</div>
     <div class="card-body">
-      <div id="status-bar">
-        <span class="dot inactive" id="dot"></span>
-        <span id="status-text">Iniciando cámara...</span>
-      </div>
-      <div id="reader"></div>
 
-      <!-- Ayuda cuando la cámara falla (iframe de Apps Script) -->
-      <div id="cam-help" style="display:none; background:#fff3e0; border-left:4px solid #e65100; border-radius:8px; padding:12px 14px; margin-top:12px; font-size:13px; color:#5d3c00;">
-        <div style="font-weight:700; margin-bottom:6px;">⚠ ¿Problemas con la cámara?</div>
-        <div id="cam-help-msg" style="margin-bottom:10px;"></div>
-        <div style="font-size:12px; line-height:1.55;">
-          1. Algunas veces el iframe de Google Apps Script bloquea la cámara.<br>
-          2. Prueba a <strong>abrir la app en una ventana nueva</strong>:
+      <!-- ── MODO 1: Foto (funciona siempre, incluso en iframe de GAS) ── -->
+      <div class="scan-section">
+        <div class="scan-label">📸 Modo foto — recomendado en móvil</div>
+        <input type="file" id="qr-file" accept="image/*" capture="environment"
+          style="display:none" onchange="escanearFoto(this)">
+        <button class="btn btn-primary btn-block" onclick="document.getElementById('qr-file').click()">
+          📸 Abrir cámara / Seleccionar foto
+        </button>
+        <div class="scan-hint">En móvil abre la cámara directamente · En PC elige una foto del QR</div>
+      </div>
+
+      <!-- ── MODO 2: Lector USB / código manual ── -->
+      <div class="scan-section">
+        <div class="scan-label">⌨ Lector USB o código manual</div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="qr-manual" class="qr-manual-input"
+            placeholder="Escanea con lector USB o escribe el ID del carnet..."
+            onkeydown="if(event.key==='Enter') procesarManual()">
+          <button class="btn btn-success" onclick="procesarManual()">✔</button>
         </div>
-        <button class="btn btn-primary" style="margin-top:8px; width:100%; justify-content:center;"
-          onclick="abrirEnVentanaNueva()">
-          🔗 Abrir en ventana nueva
+        <div class="scan-hint">Los lectores USB escriben el código y presionan Enter automáticamente</div>
+      </div>
+
+      <!-- ── MODO 3: Cámara en vivo (puede fallar en iframe de GAS) ── -->
+      <div class="scan-section" id="seccion-live">
+        <div class="scan-label" style="display:flex; align-items:center; justify-content:space-between;">
+          <span>🎥 Cámara en vivo</span>
+          <span style="font-size:10px; color:#aaa; font-weight:400; text-transform:none;">(puede no funcionar en algunos navegadores)</span>
+        </div>
+        <div id="status-bar" style="margin-bottom:8px;">
+          <span class="dot inactive" id="dot"></span>
+          <span id="status-text">No iniciada</span>
+        </div>
+        <div id="reader"></div>
+        <button class="btn btn-primary btn-block" id="btn-start" onclick="iniciarEscaner()" style="margin-top:10px;">
+          ▶ Iniciar cámara en vivo
+        </button>
+        <button class="btn btn-danger btn-block" id="btn-stop" onclick="detenerEscaner()" style="display:none; margin-top:10px;">
+          ⏹ Detener escáner
         </button>
       </div>
 
-      <!-- Resultado del escaneo -->
+      <!-- Resultado del escaneo (compartido por todos los modos) -->
       <div id="resultado">
         <div class="resultado-icon" id="res-icon"></div>
         <div class="resultado-nombre" id="res-nombre"></div>
@@ -377,12 +422,6 @@
         <span class="resultado-badge" id="res-badge"></span>
       </div>
 
-      <button class="btn btn-danger btn-block" id="btn-stop" onclick="detenerEscaner()" style="display:none;">
-        ⏹ Detener escáner
-      </button>
-      <button class="btn btn-primary btn-block" id="btn-start" onclick="iniciarEscaner()">
-        ▶ Iniciar escáner
-      </button>
     </div>
   </div>
 
@@ -501,77 +540,74 @@
   let ultimoCodigo = '';
   let historial    = [];
 
-  // ---- INICIAR ESCÁNER ----
-  function iniciarEscaner() {
-    html5QrCode = new Html5Qrcode('reader');
-    const config = {
-      fps: 10,
-      qrbox: { width: 260, height: 260 },
-      aspectRatio: 1.0
-    };
-
-    const _activarEscaner = () => {
-      escaneando = true;
-      document.getElementById('dot').className = 'dot active';
-      document.getElementById('status-text').textContent = 'Escáner activo — apunta al QR del carnet';
-      document.getElementById('btn-stop').style.display = '';
-      document.getElementById('btn-start').style.display = 'none';
-      document.getElementById('cam-help').style.display = 'none';
-    };
-
-    const _errorEscaner = err => {
-      const errStr = String(err && err.message || err);
-      const s = errStr.toLowerCase();
-      let msg = 'No se pudo acceder a la cámara.';
-
-      if (s.includes('notallowederror') || s.includes('denied') || s.includes('permission')) {
-        msg = 'Permiso de cámara denegado por el navegador o bloqueado por el iframe.';
-      } else if (s.includes('notfounderror') || s.includes('no devices') || s.includes('devicenotfound')) {
-        msg = 'No se encontró ninguna cámara en este dispositivo.';
-      } else if (s.includes('notreadable') || s.includes('trackstarterror')) {
-        msg = 'La cámara está en uso por otra aplicación.';
-      } else if (s.includes('overconstrained')) {
-        msg = 'No hay cámara que cumpla los requisitos solicitados.';
-      } else if (errStr && errStr !== 'undefined') {
-        msg = 'Error: ' + errStr;
-      }
-
-      mostrarEstado(false, msg);
-      // Mostrar la ayuda con botón para abrir en ventana nueva
-      document.getElementById('cam-help-msg').textContent = msg;
-      document.getElementById('cam-help').style.display = 'block';
-    };
-
-    // Verificar API disponible
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      _errorEscaner('El navegador no soporta acceso a la cámara (navigator.mediaDevices).');
-      return;
-    }
-
-    // 1° intento: cámara trasera (móviles); 2° respaldo: cualquier cámara
-    html5QrCode.start({ facingMode: { exact: 'environment' } }, config, onQrSuccess, onQrError)
-      .then(_activarEscaner)
+  // ---- MODO 1: Escanear foto ----
+  function escanearFoto(input) {
+    if (!input.files || !input.files[0]) return;
+    mostrarCargando();
+    if (!html5QrCode) html5QrCode = new Html5Qrcode('reader');
+    html5QrCode.scanFile(input.files[0], true)
+      .then(decoded => {
+        input.value = '';
+        // No usar debounce para foto — cada captura es intencional
+        procesarCodigo(decoded);
+      })
       .catch(() => {
-        html5QrCode.start({ facingMode: 'environment' }, config, onQrSuccess, onQrError)
-          .then(_activarEscaner)
-          .catch(() => {
-            html5QrCode.start({ facingMode: 'user' }, config, onQrSuccess, onQrError)
-              .then(_activarEscaner)
-              .catch(_errorEscaner);
-          });
+        input.value = '';
+        mostrarRespuesta({ ok: false, mensaje: 'No se pudo leer el QR. Intenta con mejor iluminación o más cerca.' });
       });
   }
 
-  // Abre la app en una ventana nueva — esto evita las restricciones
-  // del iframe interno de Google Apps Script (feature-policy)
-  function abrirEnVentanaNueva() {
-    google.script.run
-      .withSuccessHandler(url => { window.open(url, '_blank'); })
-      .withFailureHandler(() => {
-        // Intento de respaldo: usar la URL actual si falla la llamada
-        window.open(window.location.href, '_blank');
-      })
-      .getWebAppUrl();
+  // ---- MODO 2: Código manual / lector USB ----
+  function procesarManual() {
+    const input  = document.getElementById('qr-manual');
+    const codigo = input.value.trim();
+    if (!codigo) return;
+    input.value = '';
+    mostrarCargando();
+    procesarCodigo(codigo);
+  }
+
+  // ---- MODO 3: INICIAR escáner en vivo ----
+  function iniciarEscaner() {
+    if (!html5QrCode) html5QrCode = new Html5Qrcode('reader');
+    const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+
+    const _ok = () => {
+      escaneando = true;
+      document.getElementById('dot').className = 'dot active';
+      document.getElementById('status-text').textContent = 'Activo — apunta al QR del carnet';
+      document.getElementById('btn-stop').style.display = '';
+      document.getElementById('btn-start').style.display = 'none';
+    };
+
+    const _fail = err => {
+      const s = String(err && err.message || err).toLowerCase();
+      let msg = 'No se pudo iniciar la cámara.';
+      if (s.includes('denied') || s.includes('notallowed') || s.includes('permission'))
+        msg = 'Permiso denegado. Usa el Modo foto o el Modo lector USB que están arriba.';
+      else if (s.includes('notfound') || s.includes('no devices'))
+        msg = 'No se encontró cámara. Usa los modos alternativos arriba.';
+      else if (s.includes('notreadable'))
+        msg = 'Cámara en uso por otra app. Ciérrala e intenta de nuevo.';
+      mostrarEstado(false, msg);
+    };
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      _fail('El navegador no soporta acceso a cámara en vivo.');
+      return;
+    }
+
+    html5QrCode.start({ facingMode: { exact: 'environment' } }, config, onQrSuccess, onQrError)
+      .then(_ok)
+      .catch(() =>
+        html5QrCode.start({ facingMode: 'environment' }, config, onQrSuccess, onQrError)
+          .then(_ok)
+          .catch(() =>
+            html5QrCode.start({ facingMode: 'user' }, config, onQrSuccess, onQrError)
+              .then(_ok)
+              .catch(_fail)
+          )
+      );
   }
 
   // ---- DETENER ----
@@ -873,7 +909,8 @@
   window.onload = () => {
     cargarHistorialHoy();
     cargarFiltrosGrupo();
-    iniciarEscaner();
+    // No auto-iniciar cámara en vivo: el iframe de GAS la bloquea.
+    // El usuario puede usar Modo foto o Modo lector USB sin necesidad de permisos.
   };
 </script>
 </body>
