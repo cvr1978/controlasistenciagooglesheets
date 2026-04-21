@@ -4,170 +4,97 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestión de Estudiantes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
-
-    nav {
-      background: #1a73e8; color: #fff;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 20px; height: 56px; box-shadow: 0 2px 6px rgba(0,0,0,.25);
-    }
-    nav .brand { font-size: 18px; font-weight: 700; }
-    nav .nav-links a { color: rgba(255,255,255,.85); text-decoration: none; margin-left: 18px; font-size: 14px; }
-    nav .nav-links a:hover { color: #fff; }
-
-    .container { max-width: 960px; margin: 30px auto; padding: 0 16px; }
-
-    .card { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.08); margin-bottom: 20px; overflow: hidden; }
-    .card-header {
-      background: #1a73e8; color: #fff;
-      padding: 14px 20px; font-size: 15px; font-weight: 600;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .card-body { padding: 20px; }
-
-    .btn { display: inline-flex; align-items: center; gap: 5px; padding: 9px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; }
-    .btn-primary { background: #1a73e8; color: #fff; }
-    .btn-primary:hover { background: #1557b0; }
-    .btn-success { background: #2e7d32; color: #fff; }
-    .btn-success:hover { background: #1b5e20; }
-    .btn-danger  { background: #ea4335; color: #fff; }
-    .btn-danger:hover  { background: #b71c1c; }
-    .btn-warning { background: #f9ab00; color: #fff; }
-    .btn-warning:hover { background: #e37400; }
-    .btn-sm { padding: 5px 10px; font-size: 12px; }
-
-    /* Formulario */
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
-    .form-group label { display: block; font-size: 12px; color: #555; font-weight: 600; margin-bottom: 4px; }
-    .form-group input, .form-group select {
-      width: 100%; padding: 10px 12px; border: 2px solid #ddd;
-      border-radius: 8px; font-size: 14px; outline: none; transition: border-color .2s;
-    }
-    .form-group input:focus, .form-group select:focus { border-color: #1a73e8; }
-    .form-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
-
-    /* Alerta */
-    #alerta {
-      display: none; padding: 12px 16px; border-radius: 8px;
-      font-size: 13px; margin-bottom: 16px; animation: fadeIn .3s ease;
-    }
-    #alerta.ok    { background: #d9ead3; color: #2e7d32; border-left: 4px solid #2e7d32; }
-    #alerta.error { background: #fce8e6; color: #c62828; border-left: 4px solid #c62828; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* Búsqueda */
-    .search-bar {
-      display: flex; gap: 8px; margin-bottom: 16px;
-    }
-    .search-bar input {
-      flex: 1; padding: 9px 14px; border: 2px solid #ddd;
-      border-radius: 8px; font-size: 13px; outline: none;
-    }
-    .search-bar input:focus { border-color: #1a73e8; }
-
-    /* Tabla */
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    thead th { background: #e8f0fe; color: #1a73e8; padding: 10px 14px; text-align: left; font-weight: 700; }
-    tbody tr { border-bottom: 1px solid #f0f4f8; transition: background .15s; }
-    tbody tr:hover { background: #f8f9ff; }
-    tbody td { padding: 10px 14px; vertical-align: middle; }
-
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
-    .badge-active   { background: #d9ead3; color: #2e7d32; }
-    .badge-inactive { background: #fce8e6; color: #c62828; }
-
-    .avatar {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: #1a73e8; color: #fff;
-      display: inline-flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 13px; margin-right: 8px; vertical-align: middle;
-    }
-
-    .empty-state { text-align: center; color: #aaa; padding: 40px; font-size: 14px; }
-    .spinner { border: 3px solid #e8f0fe; border-top: 3px solid #1a73e8; border-radius: 50%; width: 24px; height: 24px; animation: spin .7s linear infinite; margin: 20px auto; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Modal */
-    .modal-overlay {
-      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center;
-    }
-    .modal-overlay.active { display: flex; }
-    .modal { background: #fff; border-radius: 16px; padding: 28px; width: 90%; max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
-    .modal h3 { margin-bottom: 18px; font-size: 17px; }
-    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
-
-    /* QR info */
-    .qr-info {
-      background: #e8f0fe; border-radius: 10px; padding: 12px 16px;
-      font-size: 12px; color: #1a73e8; margin-top: 8px;
-      display: flex; align-items: center; gap: 8px;
-    }
-
-    @media (max-width: 600px) {
-      .form-grid { grid-template-columns: 1fr; }
-    }
+    /* ── Alert states set by JS ── */
+    #alerta.ok    { background:#d9ead3; color:#2e7d32; border-left:4px solid #2e7d32; }
+    #alerta.error { background:#fce8e6; color:#c62828; border-left:4px solid #c62828; }
+    /* ── Badge states in JS-generated table ── */
+    .badge         { display:inline-block; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
+    .badge-active  { background:#d9ead3; color:#2e7d32; }
+    .badge-inactive{ background:#fce8e6; color:#c62828; }
+    /* ── Animations ── */
+    @keyframes spin   { to{transform:rotate(360deg)} }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+    .spinner  { border:3px solid #dbeafe;border-top-color:#1a73e8;border-radius:9999px;
+      width:24px;height:24px;animation:spin .7s linear infinite;margin:20px auto; }
+    .anim-fade { animation:fadeIn .3s ease; }
   </style>
 </head>
-<body>
+<body class="bg-slate-100 min-h-screen" style="font-family:'Segoe UI',system-ui,sans-serif">
 
-<nav>
-  <div class="brand">👥 Gestión de Estudiantes</div>
-  <div class="nav-links">
-    <a onclick="nav('')"            href="javascript:void(0)">📷 Escáner</a>
-    <a onclick="nav('lista')"       href="javascript:void(0)">📋 Lista</a>
-    <a onclick="nav('dashboard')"   href="javascript:void(0)">📊 Dashboard</a>
+<!-- ═══ NAVBAR ═══ -->
+<nav class="bg-[#1a73e8] shadow-lg sticky top-0 z-50">
+  <div class="max-w-4xl mx-auto px-4">
+    <div class="flex items-center justify-between h-14">
+      <span class="text-white font-bold text-base sm:text-lg">👥 Gestión de Estudiantes</span>
+      <div class="hidden sm:flex items-center gap-5">
+        <a onclick="nav('')"            href="javascript:void(0)" class="text-white/80 hover:text-white text-sm cursor-pointer transition-colors">📷 Escáner</a>
+        <a onclick="nav('lista')"       href="javascript:void(0)" class="text-white/80 hover:text-white text-sm cursor-pointer transition-colors">📋 Lista</a>
+        <a onclick="nav('dashboard')"   href="javascript:void(0)" class="text-white/80 hover:text-white text-sm cursor-pointer transition-colors">📊 Dashboard</a>
+      </div>
+      <button onclick="document.getElementById('mnav').classList.toggle('hidden')"
+        class="sm:hidden text-white text-2xl leading-none px-2 py-1 rounded bg-transparent border-0 cursor-pointer">☰</button>
+    </div>
+  </div>
+  <div id="mnav" class="hidden sm:hidden bg-[#1557b0] px-4 pb-3 space-y-0.5">
+    <a onclick="nav('');document.getElementById('mnav').classList.add('hidden')"          href="javascript:void(0)" class="flex gap-2 text-white/85 hover:text-white py-2.5 text-sm border-b border-white/10 cursor-pointer">📷 Escáner</a>
+    <a onclick="nav('lista');document.getElementById('mnav').classList.add('hidden')"     href="javascript:void(0)" class="flex gap-2 text-white/85 hover:text-white py-2.5 text-sm border-b border-white/10 cursor-pointer">📋 Lista</a>
+    <a onclick="nav('dashboard');document.getElementById('mnav').classList.add('hidden')" href="javascript:void(0)" class="flex gap-2 text-white/85 hover:text-white py-2.5 text-sm cursor-pointer">📊 Dashboard</a>
   </div>
 </nav>
 
-<div class="container">
+<div class="max-w-4xl mx-auto px-4 py-5 space-y-5">
 
-  <!-- ===== FORMULARIO ===== -->
-  <div class="card">
-    <div class="card-header">
+  <!-- ═══ FORMULARIO ═══ -->
+  <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div class="bg-[#1a73e8] text-white px-5 py-3.5 text-sm font-semibold">
       <span id="form-titulo">➕ Agregar Estudiante</span>
     </div>
-    <div class="card-body">
-      <div id="alerta"></div>
+    <div class="p-4 sm:p-5">
+      <div id="alerta" style="display:none" class="px-4 py-3 rounded-xl text-sm font-medium mb-4 anim-fade"></div>
 
-      <div class="form-grid">
-        <div class="form-group">
-          <label>ID / Código del Carnet *</label>
-          <input type="text" id="f-id" placeholder="Ej: 2024001" autocomplete="off">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
+        <div class="lg:col-span-2">
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">ID / Código del Carnet *</label>
+          <input type="text" id="f-id" placeholder="Ej: 2024001" autocomplete="off"
+            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
         </div>
-        <div class="form-group">
-          <label>Nombre Completo *</label>
-          <input type="text" id="f-nombre" placeholder="Ej: Juan García López">
+        <div class="lg:col-span-2">
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nombre Completo *</label>
+          <input type="text" id="f-nombre" placeholder="Ej: Juan García López"
+            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
         </div>
-        <div class="form-group">
-          <label>Programa / Curso *</label>
-          <input type="text" id="f-programa" placeholder="Ej: Ingeniería de Sistemas">
+        <div class="lg:col-span-2">
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Programa / Curso *</label>
+          <input type="text" id="f-programa" placeholder="Ej: Ingeniería de Sistemas"
+            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
         </div>
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="f-email" placeholder="correo@institución.edu">
+        <div class="lg:col-span-2">
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Email</label>
+          <input type="email" id="f-email" placeholder="correo@institución.edu"
+            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
         </div>
-        <div class="form-group">
-          <label>Estado</label>
-          <select id="f-estado">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Estado</label>
+          <select id="f-estado" class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white">
             <option value="Activo">Activo</option>
             <option value="Inactivo">Inactivo</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Grado</label>
-          <input type="text" id="f-grado" placeholder="Ej: 10, 11, 1er año">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Grado</label>
+          <input type="text" id="f-grado" placeholder="Ej: 10, 11, 1er año"
+            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
         </div>
-        <div class="form-group">
-          <label>Sección</label>
-          <input type="text" id="f-seccion" placeholder="Ej: A, B, Matutina">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Sección</label>
+          <input type="text" id="f-seccion" placeholder="Ej: A, B, Matutina"
+            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
         </div>
-        <div class="form-group">
-          <label>Sexo</label>
-          <select id="f-sexo">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Sexo</label>
+          <select id="f-sexo" class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white">
             <option value="">— Sin especificar —</option>
             <option value="M">M — Masculino</option>
             <option value="F">F — Femenino</option>
@@ -175,30 +102,47 @@
         </div>
       </div>
 
-      <div class="qr-info">
+      <!-- Info QR -->
+      <div class="flex items-start gap-2 bg-[#e8f0fe] rounded-xl px-4 py-3 mt-2 mb-4 text-xs text-[#1a73e8]">
         💡 El QR del carnet debe contener únicamente el <strong>ID / Código</strong> del estudiante.
         Puedes generarlo en <strong>qr-code-generator.com</strong> o una app similar.
       </div>
 
-      <div class="form-actions">
-        <button class="btn btn-success" onclick="guardarEstudiante()">💾 Guardar</button>
-        <button class="btn btn-warning" onclick="limpiarFormulario()">🔄 Limpiar</button>
-        <button class="btn btn-danger" id="btn-eliminar" style="display:none;" onclick="confirmarEliminar()">🗑 Eliminar</button>
+      <!-- Botones -->
+      <div class="flex flex-wrap gap-2">
+        <button onclick="guardarEstudiante()"
+          class="flex items-center gap-1.5 px-4 py-2.5 bg-[#2e7d32] hover:bg-[#1b5e20] text-white rounded-xl text-sm font-semibold cursor-pointer border-0 transition-colors">
+          💾 Guardar
+        </button>
+        <button onclick="limpiarFormulario()"
+          class="flex items-center gap-1.5 px-4 py-2.5 bg-[#f9ab00] hover:bg-[#e37400] text-white rounded-xl text-sm font-semibold cursor-pointer border-0 transition-colors">
+          🔄 Limpiar
+        </button>
+        <button id="btn-eliminar" onclick="confirmarEliminar()" style="display:none"
+          class="flex items-center gap-1.5 px-4 py-2.5 bg-[#ea4335] hover:bg-[#b71c1c] text-white rounded-xl text-sm font-semibold cursor-pointer border-0 transition-colors">
+          🗑 Eliminar
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- ===== TABLA ===== -->
-  <div class="card">
-    <div class="card-header">
+  <!-- ═══ TABLA ═══ -->
+  <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div class="bg-[#1a73e8] text-white px-5 py-3.5 text-sm font-semibold flex items-center justify-between">
       <span>📋 Listado de Estudiantes (<span id="cont-total">0</span>)</span>
-      <button class="btn btn-primary btn-sm" onclick="cargarEstudiantes()">🔄 Recargar</button>
+      <button onclick="cargarEstudiantes()"
+        class="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold cursor-pointer border-0 transition-colors">
+        🔄 Recargar
+      </button>
     </div>
-    <div class="card-body">
-      <div class="search-bar">
-        <input type="text" id="busqueda" placeholder="🔍 Buscar por nombre, ID o programa..." oninput="filtrarTabla()">
+    <div class="p-4 sm:p-5">
+      <div class="relative mb-4">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm">🔍</span>
+        <input type="text" id="busqueda" placeholder="Buscar por nombre, ID o programa..."
+          class="w-full pl-9 pr-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors"
+          oninput="filtrarTabla()">
       </div>
-      <div class="table-wrap">
+      <div class="overflow-x-auto">
         <div id="tabla-body"><div class="spinner"></div></div>
       </div>
     </div>
@@ -206,99 +150,96 @@
 
 </div>
 
-<!-- ===== MODAL CONFIRMACIÓN ELIMINAR ===== -->
-<div class="modal-overlay" id="modal-eliminar">
-  <div class="modal">
-    <h3>⚠️ Confirmar eliminación</h3>
-    <p id="modal-texto" style="font-size:14px;color:#555;"></p>
-    <div class="modal-actions">
-      <button class="btn btn-danger" onclick="ejecutarEliminar()">Sí, eliminar</button>
-      <button class="btn btn-primary" onclick="cerrarModal()">Cancelar</button>
+<!-- ═══ MODAL ELIMINAR ═══ -->
+<div id="modal-eliminar"
+  class="fixed inset-0 bg-black/50 z-50 items-center justify-content-center p-4"
+  style="display:none;align-items:center;justify-content:center;">
+  <div class="bg-white rounded-2xl p-6 sm:p-7 w-full max-w-md shadow-2xl">
+    <h3 class="text-lg font-bold mb-3">⚠️ Confirmar eliminación</h3>
+    <p id="modal-texto" class="text-sm text-gray-600 mb-6"></p>
+    <div class="flex gap-3 justify-end">
+      <button onclick="ejecutarEliminar()"
+        class="px-4 py-2.5 bg-[#ea4335] hover:bg-[#b71c1c] text-white rounded-xl text-sm font-semibold cursor-pointer border-0 transition-colors">
+        Sí, eliminar
+      </button>
+      <button onclick="cerrarModal()"
+        class="px-4 py-2.5 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-xl text-sm font-semibold cursor-pointer border-0 transition-colors">
+        Cancelar
+      </button>
     </div>
   </div>
 </div>
 
 <script>
-  let estudiantes   = [];
-  let modoEdicion   = false;
-  let idEdicion     = null;
+  let estudiantes = [];
+  let modoEdicion = false;
+  let idEdicion   = null;
 
-  // ---- CARGAR ----
+  // ── Cargar ──
   function cargarEstudiantes() {
     document.getElementById('tabla-body').innerHTML = '<div class="spinner"></div>';
     google.script.run
-      .withSuccessHandler(data => {
-        estudiantes = data;
-        renderTabla(data);
-      })
-      .withFailureHandler(() => {
-        document.getElementById('tabla-body').innerHTML = '<div class="empty-state">Error al cargar estudiantes</div>';
-      })
+      .withSuccessHandler(data => { estudiantes = data; renderTabla(data); })
+      .withFailureHandler(() => { document.getElementById('tabla-body').innerHTML = '<div class="text-center text-gray-400 py-10">Error al cargar estudiantes</div>'; })
       .obtenerEstudiantes();
   }
 
   function renderTabla(data) {
     document.getElementById('cont-total').textContent = data.length;
     if (!data || data.length === 0) {
-      document.getElementById('tabla-body').innerHTML = '<div class="empty-state">No hay estudiantes registrados</div>';
+      document.getElementById('tabla-body').innerHTML = '<div class="text-center text-gray-400 py-10 text-sm">No hay estudiantes registrados</div>';
       return;
     }
     document.getElementById('tabla-body').innerHTML = `
-      <table>
+      <table class="w-full border-collapse text-sm">
         <thead>
-          <tr>
-            <th>ID / Código</th><th>Nombre</th><th>Carrera</th><th>Grado</th><th>Sección</th><th>Sexo</th><th>Estado</th><th>Acciones</th>
-          </tr>
+          <tr>${['ID / Código','Nombre','Carrera','Grado','Sección','Sexo','Estado','Acciones'].map(h =>
+            `<th class="bg-[#e8f0fe] text-[#1a73e8] px-3 py-2.5 text-left font-bold text-xs whitespace-nowrap">${h}</th>`).join('')}</tr>
         </thead>
         <tbody>
-          ${data.map(e => `
-            <tr>
-              <td><strong>${e.id}</strong></td>
-              <td>
-                <span class="avatar">${e.nombre.charAt(0).toUpperCase()}</span>${e.nombre}
-              </td>
-              <td>${e.programa || '—'}</td>
-              <td>${e.grado || '—'}</td>
-              <td>${e.seccion || '—'}</td>
-              <td>${e.sexo || '—'}</td>
-              <td>
-                <span class="badge ${e.estado === 'Activo' ? 'badge-active' : 'badge-inactive'}">${e.estado}</span>
-              </td>
-              <td>
-                <button class="btn btn-warning btn-sm" onclick="editarEstudiante('${escapar(e.id)}')">✏ Editar</button>
-              </td>
-            </tr>
-          `).join('')}
+          ${data.map(e => `<tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+            <td class="px-3 py-2.5 text-xs font-bold">${e.id}</td>
+            <td class="px-3 py-2.5 text-xs">
+              <div class="flex items-center gap-2">
+                <div style="width:28px;height:28px;border-radius:50%;background:#1a73e8;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">
+                  ${e.nombre.charAt(0).toUpperCase()}
+                </div>
+                <span class="font-medium">${e.nombre}</span>
+              </div>
+            </td>
+            <td class="px-3 py-2.5 text-xs">${e.programa||'—'}</td>
+            <td class="px-3 py-2.5 text-xs">${e.grado||'—'}</td>
+            <td class="px-3 py-2.5 text-xs">${e.seccion||'—'}</td>
+            <td class="px-3 py-2.5 text-xs">${e.sexo||'—'}</td>
+            <td class="px-3 py-2.5 text-xs"><span class="badge ${e.estado==='Activo'?'badge-active':'badge-inactive'}">${e.estado}</span></td>
+            <td class="px-3 py-2.5 text-xs">
+              <button onclick="editarEstudiante('${escapar(e.id)}')"
+                class="px-3 py-1.5 bg-[#f9ab00] hover:bg-[#e37400] text-white rounded-lg text-xs font-bold cursor-pointer border-0 transition-colors">
+                ✏ Editar
+              </button>
+            </td>
+          </tr>`).join('')}
         </tbody>
-      </table>
-    `;
+      </table>`;
   }
 
-  function escapar(s) {
-    return String(s).replace(/'/g, "\\'");
-  }
+  function escapar(s) { return String(s).replace(/'/g, "\\'"); }
 
-  // ---- FILTRO ----
   function filtrarTabla() {
     const q = document.getElementById('busqueda').value.toLowerCase();
-    const filtrado = estudiantes.filter(e =>
+    renderTabla(estudiantes.filter(e =>
       e.nombre.toLowerCase().includes(q) ||
       String(e.id).toLowerCase().includes(q) ||
-      (e.programa || '').toLowerCase().includes(q) ||
-      (e.grado || '').toLowerCase().includes(q) ||
-      (e.seccion || '').toLowerCase().includes(q)
-    );
-    renderTabla(filtrado);
+      (e.programa||'').toLowerCase().includes(q) ||
+      (e.grado||'').toLowerCase().includes(q) ||
+      (e.seccion||'').toLowerCase().includes(q)
+    ));
   }
 
-  // ---- EDITAR ----
   function editarEstudiante(id) {
     const e = estudiantes.find(x => String(x.id) === String(id));
     if (!e) return;
-
-    modoEdicion = true;
-    idEdicion   = id;
-
+    modoEdicion = true; idEdicion = id;
     document.getElementById('f-id').value       = e.id;
     document.getElementById('f-nombre').value   = e.nombre;
     document.getElementById('f-programa').value = e.programa;
@@ -307,90 +248,71 @@
     document.getElementById('f-grado').value    = e.grado || '';
     document.getElementById('f-seccion').value  = e.seccion || '';
     document.getElementById('f-sexo').value     = e.sexo || '';
-
     document.getElementById('form-titulo').textContent = '✏ Editar Estudiante';
     document.getElementById('btn-eliminar').style.display = '';
-
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // ---- GUARDAR ----
   function guardarEstudiante() {
     const datos = {
-      id:       document.getElementById('f-id').value.trim(),
-      nombre:   document.getElementById('f-nombre').value.trim(),
+      id: document.getElementById('f-id').value.trim(),
+      nombre: document.getElementById('f-nombre').value.trim(),
       programa: document.getElementById('f-programa').value.trim(),
-      email:    document.getElementById('f-email').value.trim(),
-      estado:   document.getElementById('f-estado').value,
-      grado:    document.getElementById('f-grado').value.trim(),
-      seccion:  document.getElementById('f-seccion').value.trim(),
-      sexo:     document.getElementById('f-sexo').value
+      email: document.getElementById('f-email').value.trim(),
+      estado: document.getElementById('f-estado').value,
+      grado: document.getElementById('f-grado').value.trim(),
+      seccion: document.getElementById('f-seccion').value.trim(),
+      sexo: document.getElementById('f-sexo').value
     };
-
     if (!datos.id || !datos.nombre || !datos.programa) {
-      mostrarAlerta('Completa los campos obligatorios: ID, Nombre y Programa.', false);
-      return;
+      mostrarAlerta('Completa los campos obligatorios: ID, Nombre y Programa.', false); return;
     }
-
-    if (modoEdicion) {
-      google.script.run
-        .withSuccessHandler(r => {
-          mostrarAlerta(r.mensaje, r.ok);
-          if (r.ok) { limpiarFormulario(); cargarEstudiantes(); }
-        })
-        .actualizarEstudiante(idEdicion, datos);
-    } else {
-      google.script.run
-        .withSuccessHandler(r => {
-          mostrarAlerta(r.mensaje, r.ok);
-          if (r.ok) { limpiarFormulario(); cargarEstudiantes(); }
-        })
-        .agregarEstudiante(datos);
-    }
+    const fn = modoEdicion ? 'actualizarEstudiante' : 'agregarEstudiante';
+    const args = modoEdicion ? [idEdicion, datos] : [datos];
+    google.script.run
+      .withSuccessHandler(r => { mostrarAlerta(r.mensaje, r.ok); if (r.ok) { limpiarFormulario(); cargarEstudiantes(); } })
+      [fn](...args);
   }
 
-  // ---- ELIMINAR ----
   function confirmarEliminar() {
     const nombre = document.getElementById('f-nombre').value;
     document.getElementById('modal-texto').textContent = `¿Deseas eliminar a ${nombre} (${idEdicion})? Esta acción no se puede deshacer.`;
-    document.getElementById('modal-eliminar').classList.add('active');
+    const m = document.getElementById('modal-eliminar');
+    m.style.display = 'flex';
   }
 
   function ejecutarEliminar() {
     cerrarModal();
     google.script.run
-      .withSuccessHandler(r => {
-        mostrarAlerta(r.mensaje, r.ok);
-        if (r.ok) { limpiarFormulario(); cargarEstudiantes(); }
-      })
+      .withSuccessHandler(r => { mostrarAlerta(r.mensaje, r.ok); if (r.ok) { limpiarFormulario(); cargarEstudiantes(); } })
       .eliminarEstudiante(idEdicion);
   }
 
   function cerrarModal() {
-    document.getElementById('modal-eliminar').classList.remove('active');
+    document.getElementById('modal-eliminar').style.display = 'none';
   }
 
-  // ---- LIMPIAR ----
   function limpiarFormulario() {
     ['f-id','f-nombre','f-programa','f-email','f-grado','f-seccion'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('f-estado').value = 'Activo';
     document.getElementById('f-sexo').value   = '';
     document.getElementById('form-titulo').textContent = '➕ Agregar Estudiante';
     document.getElementById('btn-eliminar').style.display = 'none';
-    modoEdicion = false;
-    idEdicion   = null;
+    modoEdicion = false; idEdicion = null;
   }
 
-  // ---- ALERTA ----
   function mostrarAlerta(mensaje, ok) {
     const el = document.getElementById('alerta');
-    el.textContent = mensaje;
-    el.className   = ok ? 'ok' : 'error';
+    el.textContent = mensaje; el.className = ok ? 'ok' : 'error';
     el.style.display = 'block';
+    el.style.padding = '12px 16px';
+    el.style.borderRadius = '12px';
+    el.style.fontSize = '13px';
+    el.style.marginBottom = '16px';
     setTimeout(() => { el.style.display = 'none'; }, 4000);
   }
 
-  // ---- NAVEGACIÓN ----
+  // ── Navegación ──
   let _webAppUrl = '';
   function nav(page) {
     const go = u => { window.top.location.href = u + (page ? '?page=' + page : ''); };
@@ -398,7 +320,7 @@
     else google.script.run.withSuccessHandler(u => { _webAppUrl = u; go(u); }).getWebAppUrl();
   }
 
-  // ---- INIT ----
+  // ── Init ──
   window.onload = () => {
     google.script.run.withSuccessHandler(u => { _webAppUrl = u; }).getWebAppUrl();
     cargarEstudiantes();

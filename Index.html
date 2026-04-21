@@ -4,535 +4,255 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Control de Asistencia QR</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f0f4f8;
-      min-height: 100vh;
-    }
-
-    /* ---- NAV ---- */
-    nav {
-      background: #1a73e8;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
-      height: 56px;
-      box-shadow: 0 2px 6px rgba(0,0,0,.25);
-    }
-    nav .brand { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-    nav .nav-links a {
-      color: rgba(255,255,255,.85);
-      text-decoration: none;
-      margin-left: 18px;
-      font-size: 14px;
-      transition: color .2s;
-    }
-    nav .nav-links a:hover { color: #fff; }
-
-    /* ---- LAYOUT ---- */
-    .container {
-      max-width: 660px;
-      margin: 30px auto;
-      padding: 0 16px;
-    }
-
-    /* ---- CARD ---- */
-    .card {
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,.1);
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
-    .card-header {
-      background: #1a73e8;
-      color: #fff;
-      padding: 16px 20px;
-      font-size: 16px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-    .card-body { padding: 20px; }
-
-    /* ---- SCAN SECTIONS ---- */
-    .scan-section {
-      border: 1px solid #e8f0fe;
-      border-radius: 10px;
-      padding: 14px;
-      margin-bottom: 12px;
-      background: #fafbff;
-    }
-    .scan-label {
-      font-size: 12px; font-weight: 700; color: #1a73e8;
-      text-transform: uppercase; letter-spacing: .4px;
-      margin-bottom: 10px;
-    }
-    .scan-hint {
-      font-size: 11px; color: #999; margin-top: 7px; text-align: center;
-    }
-    .qr-manual-input {
-      flex: 1; padding: 10px 12px; border: 2px solid #ddd;
-      border-radius: 8px; font-size: 14px; outline: none; transition: border-color .2s;
-    }
-    .qr-manual-input:focus { border-color: #1a73e8; }
-
-    /* ---- SCANNER (live) ---- */
-    #reader {
-      width: 100%;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 3px solid #1a73e8;
-    }
-
-    /* ---- RESULTADO ---- */
-    #resultado {
-      display: none;
-      border-radius: 12px;
-      padding: 16px 20px;
-      margin-top: 16px;
-      font-size: 15px;
-      animation: fadeIn .4s ease;
-    }
-    #resultado.ok    { background: #d9ead3; border-left: 5px solid #2e7d32; color: #1b5e20; }
-    #resultado.error { background: #fce8e6; border-left: 5px solid #c62828; color: #b71c1c; }
-    #resultado.warn  { background: #fff3e0; border-left: 5px solid #e65100; color: #bf360c; }
-
-    .resultado-icon { font-size: 32px; margin-bottom: 8px; }
-    .resultado-nombre { font-size: 20px; font-weight: 700; margin: 4px 0; }
-    .resultado-detalle { font-size: 13px; opacity: .8; }
-    .resultado-badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-top: 6px;
-    }
-    .badge-puntual { background: #2e7d32; color: #fff; }
-    .badge-tarde   { background: #e65100; color: #fff; }
-
-    /* ---- CONTROLES ---- */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 10px 20px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: all .2s;
-    }
-    .btn-primary { background: #1a73e8; color: #fff; }
-    .btn-primary:hover { background: #1557b0; }
-    .btn-danger  { background: #ea4335; color: #fff; }
-    .btn-danger:hover  { background: #b71c1c; }
-    .btn-block { width: 100%; justify-content: center; margin-top: 12px; }
-
-    /* ---- MANUAL / GRUPO ---- */
-    .filtros-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-    .fg label { display: block; font-size: 11px; font-weight: 700; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
-    .fg select, .fg input {
-      width: 100%; padding: 9px 10px; border: 2px solid #ddd;
-      border-radius: 8px; font-size: 13px; outline: none;
-      transition: border-color .2s; background: #fff;
-    }
-    .fg select:focus, .fg input:focus { border-color: #1a73e8; }
-
-    /* Contadores mini */
-    .mini-contadores {
-      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
-    }
-    .mini-cnt {
-      display: flex; align-items: center; gap: 5px;
-      background: #f8f9ff; border-radius: 6px; padding: 4px 10px;
-      font-size: 12px; font-weight: 700;
-    }
-    .cdot { width: 8px; height: 8px; border-radius: 50%; }
-    .cdot-p { background: #2e7d32; }
-    .cdot-t { background: #e65100; }
-    .cdot-a { background: #c62828; }
-    .mini-val { color: #1a73e8; font-size: 15px; font-weight: 800; }
-
-    /* Toolbar rápida */
-    .quick-bar {
-      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-      padding: 8px 0; border-bottom: 1px solid #f0f4f8; margin-bottom: 12px;
-    }
-    .btn-xs { padding: 5px 10px; font-size: 11px; font-weight: 700; border-radius: 6px; border: none; cursor: pointer; }
-    .btn-xs-success { background: #d9ead3; color: #2e7d32; }
-    .btn-xs-danger  { background: #fce8e6; color: #c62828; }
-    .btn-xs-warn    { background: #fff3e0; color: #e65100; }
-
-    /* Fila de estudiante en lista grupo */
-    .glista { display: flex; flex-direction: column; gap: 0; }
-    .grow {
-      display: grid;
-      grid-template-columns: 34px 1fr auto;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 6px;
-      border-bottom: 1px solid #f0f4f8;
-      border-radius: 8px;
-      transition: background .15s;
-    }
-    .grow:hover { background: #f8f9ff; }
-    .grow:last-child { border-bottom: none; }
-
-    .gavatar {
-      width: 34px; height: 34px; border-radius: 50%;
-      color: #fff; display: flex; align-items: center;
-      justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0;
-    }
-    .gavatar.puntual { background: #2e7d32; }
-    .gavatar.tarde   { background: #e65100; }
-    .gavatar.ausente { background: #c62828; }
-    .gavatar.nuevo   { background: #1a73e8; }
-
-    .ginfo .gnombre { font-size: 13px; font-weight: 700; }
-    .ginfo .gmeta   { font-size: 11px; color: #888; }
-
-    /* Toggle estado */
-    .etoggle { display: flex; border-radius: 7px; overflow: hidden; border: 2px solid #ddd; flex-shrink: 0; }
+    /* ── Radio toggle (sibling selectors, no Tailwind equivalent) ── */
     .etoggle input[type="radio"] { display: none; }
-    .etoggle label {
-      padding: 5px 10px; font-size: 11px; font-weight: 700;
-      cursor: pointer; background: #f8f9ff; color: #999;
-      transition: all .15s; border-right: 1px solid #ddd; white-space: nowrap;
-    }
+    .etoggle label { padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+      background: #f8f9ff; color: #999; transition: all .15s;
+      border-right: 1px solid #e2e8f0; white-space: nowrap; }
     .etoggle label:last-of-type { border-right: none; }
     .etoggle input[value="Puntual"]:checked + label { background: #2e7d32; color: #fff; }
     .etoggle input[value="Tarde"]:checked   + label { background: #e65100; color: #fff; }
     .etoggle input[value="Ausente"]:checked + label { background: #c62828; color: #fff; }
-    /* QR label solo informativo, no bloquea el toggle */
-
-    .qr-lbl {
-      font-size: 10px; background: #e8f0fe; color: #1a73e8;
-      border-radius: 4px; padding: 1px 5px; font-weight: 700; margin-left: 5px;
-    }
-
-    /* Alerta en lista grupo */
-    #alerta-grupo {
-      display: none; padding: 10px 14px; border-radius: 8px;
-      font-size: 13px; margin-bottom: 12px;
-    }
-    #alerta-grupo.ok    { background: #d9ead3; color: #2e7d32; border-left: 4px solid #2e7d32; }
-    #alerta-grupo.error { background: #fce8e6; color: #c62828; border-left: 4px solid #c62828; }
-
-    .btn-success { background: #2e7d32; color: #fff; }
-    .btn-success:hover { background: #1b5e20; }
-    .btn-sm { padding: 7px 14px; font-size: 13px; }
-
-    /* ---- HISTORIAL ---- */
-    .historial-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 0;
-      border-bottom: 1px solid #f0f4f8;
-    }
-    .historial-item:last-child { border-bottom: none; }
-    .hist-hora {
-      background: #e8f0fe;
-      color: #1a73e8;
-      border-radius: 8px;
-      padding: 4px 8px;
-      font-size: 12px;
-      font-weight: 700;
-      min-width: 60px;
-      text-align: center;
-    }
-    .hist-nombre { font-size: 14px; font-weight: 600; }
-    .hist-id     { font-size: 12px; color: #666; }
-    .hist-badge  {
-      margin-left: auto;
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-weight: 600;
-    }
-    .hist-badge.p { background: #d9ead3; color: #2e7d32; }
-    .hist-badge.t { background: #fff3e0; color: #e65100; }
-
-    /* ---- STATUS ---- */
-    #status-bar {
-      text-align: center;
-      font-size: 13px;
-      color: #666;
-      padding: 8px 0;
-    }
-    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
-    .dot.active   { background: #2e7d32; animation: pulse 1.5s infinite; }
-    .dot.inactive { background: #999; }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; } 50% { opacity: .4; }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-8px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .spinner {
-      border: 3px solid #e8f0fe;
-      border-top: 3px solid #1a73e8;
-      border-radius: 50%;
-      width: 22px; height: 22px;
-      animation: spin .7s linear infinite;
-      display: inline-block;
-      vertical-align: middle;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .empty-state {
-      text-align: center;
-      color: #aaa;
-      font-size: 13px;
-      padding: 20px 0;
-    }
-
-    /* ---- RESUMEN POST-GUARDADO ---- */
-    #resumen-grupo {
-      display: none;
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 4px 20px rgba(0,0,0,.1);
-      overflow: hidden;
-      margin-bottom: 20px;
-      animation: fadeIn .4s ease;
-    }
-    .res-header {
-      background: #1a73e8; color: #fff;
-      padding: 13px 20px; font-size: 15px; font-weight: 700;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .res-body { padding: 18px 20px; }
-    .res-fecha { font-size: 12px; color: #555; margin-bottom: 14px; }
-    .res-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-    .res-col {
-      background: #f0f4f8; border-radius: 10px;
-      padding: 10px 12px; text-align: center;
-    }
-    .res-col-title { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
-    .res-row-label { font-size: 11px; color: #555; margin-bottom: 2px; }
-    .res-num { font-size: 22px; font-weight: 800; color: #1a73e8; line-height: 1; }
-    .res-num.verde  { color: #2e7d32; }
-    .res-num.rojo   { color: #c62828; }
-    .res-num.naranja{ color: #e65100; }
-    .res-breakdown {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-      font-size: 11px; margin-top: 8px;
-    }
-    .res-bd-item {
-      background: #fff; border-radius: 6px; padding: 5px 8px;
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .res-bd-val { font-weight: 800; font-size: 13px; }
-    .btn-cerrar-res {
-      background: rgba(255,255,255,.2); border: none; color: #fff;
-      border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px;
-    }
+    /* ── Avatar colors set by JS ── */
+    .gavatar { width:34px;height:34px;border-radius:50%;color:#fff;display:flex;align-items:center;
+      justify-content:center;font-weight:700;font-size:13px;flex-shrink:0; }
+    .gavatar.puntual { background:#2e7d32; }
+    .gavatar.tarde   { background:#e65100; }
+    .gavatar.ausente { background:#c62828; }
+    .gavatar.nuevo   { background:#1a73e8; }
+    /* ── Result/alert states set by JS className ── */
+    #resultado.ok    { background:#d9ead3; border-left:5px solid #2e7d32; color:#1b5e20; }
+    #resultado.error { background:#fce8e6; border-left:5px solid #c62828; color:#b71c1c; }
+    #resultado.warn  { background:#fff3e0; border-left:5px solid #e65100; color:#bf360c; }
+    #alerta-grupo.ok    { background:#d9ead3; color:#2e7d32; border-left:4px solid #2e7d32; }
+    #alerta-grupo.error { background:#fce8e6; color:#c62828; border-left:4px solid #c62828; }
+    /* ── Classes used inside JS-generated HTML ── */
+    .resultado-icon   { font-size:32px; margin-bottom:8px; }
+    .resultado-nombre { font-size:20px; font-weight:700; margin:4px 0; }
+    .resultado-detalle{ font-size:13px; opacity:.8; }
+    .resultado-badge  { display:inline-block; padding:3px 10px; border-radius:20px;
+      font-size:12px; font-weight:600; margin-top:6px; }
+    .badge-puntual { background:#2e7d32; color:#fff; }
+    .badge-tarde   { background:#e65100; color:#fff; }
+    /* ── Dot / live scanner ── */
+    .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+    .dot.active   { background:#2e7d32; animation:pulse 1.5s infinite; }
+    .dot.inactive { background:#9ca3af; }
+    /* ── Animations ── */
+    @keyframes spin   { to { transform:rotate(360deg); } }
+    @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.4} }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+    .spinner { border:3px solid #dbeafe; border-top-color:#1a73e8; border-radius:9999px;
+      width:24px; height:24px; animation:spin .7s linear infinite; margin:20px auto; }
+    .anim-fade { animation:fadeIn .35s ease; }
   </style>
 </head>
-<body>
+<body class="bg-slate-100 min-h-screen" style="font-family:'Segoe UI',system-ui,sans-serif">
 
-<nav>
-  <div class="brand">📷 Asistencia QR</div>
-  <div class="nav-links">
-    <a onclick="nav('lista')"        href="javascript:void(0)">📋 Lista</a>
-    <a onclick="nav('dashboard')"    href="javascript:void(0)">📊 Dashboard</a>
-    <a onclick="nav('estudiantes')"  href="javascript:void(0)">👥 Estudiantes</a>
+<!-- ═══ NAVBAR ═══ -->
+<nav class="bg-[#1a73e8] shadow-lg sticky top-0 z-50">
+  <div class="max-w-2xl mx-auto px-4">
+    <div class="flex items-center justify-between h-14">
+      <span class="text-white font-bold text-base sm:text-lg">📷 Asistencia QR</span>
+      <!-- Desktop links -->
+      <div class="hidden sm:flex items-center gap-5">
+        <a onclick="nav('lista')"       href="javascript:void(0)" class="text-white/80 hover:text-white text-sm cursor-pointer transition-colors">📋 Lista</a>
+        <a onclick="nav('dashboard')"   href="javascript:void(0)" class="text-white/80 hover:text-white text-sm cursor-pointer transition-colors">📊 Dashboard</a>
+        <a onclick="nav('estudiantes')" href="javascript:void(0)" class="text-white/80 hover:text-white text-sm cursor-pointer transition-colors">👥 Estudiantes</a>
+      </div>
+      <!-- Hamburger -->
+      <button onclick="document.getElementById('mnav').classList.toggle('hidden')"
+        class="sm:hidden text-white text-2xl leading-none px-2 py-1 rounded bg-transparent border-0 cursor-pointer">☰</button>
+    </div>
+  </div>
+  <!-- Mobile dropdown -->
+  <div id="mnav" class="hidden sm:hidden bg-[#1557b0] px-4 pb-3 space-y-0.5">
+    <a onclick="nav('lista');document.getElementById('mnav').classList.add('hidden')"       href="javascript:void(0)" class="flex items-center gap-2 text-white/85 hover:text-white py-2.5 text-sm border-b border-white/10 cursor-pointer">📋 Lista</a>
+    <a onclick="nav('dashboard');document.getElementById('mnav').classList.add('hidden')"   href="javascript:void(0)" class="flex items-center gap-2 text-white/85 hover:text-white py-2.5 text-sm border-b border-white/10 cursor-pointer">📊 Dashboard</a>
+    <a onclick="nav('estudiantes');document.getElementById('mnav').classList.add('hidden')" href="javascript:void(0)" class="flex items-center gap-2 text-white/85 hover:text-white py-2.5 text-sm cursor-pointer">👥 Estudiantes</a>
   </div>
 </nav>
 
-<div class="container">
+<div class="max-w-2xl mx-auto px-4 py-5 space-y-5">
 
-  <!-- ===== ESCÁNER ===== -->
-  <div class="card">
-    <div class="card-header">📷 Escáner de QR</div>
-    <div class="card-body">
+  <!-- ═══ ESCÁNER ═══ -->
+  <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div class="bg-[#1a73e8] text-white px-5 py-3.5 text-sm font-semibold">📷 Escáner de QR</div>
+    <div class="p-4 sm:p-5 space-y-3">
 
-      <!-- ── MODO 1: Foto (funciona siempre, incluso en iframe de GAS) ── -->
-      <div class="scan-section">
-        <div class="scan-label">📸 Modo foto — recomendado en móvil</div>
-        <input type="file" id="qr-file" accept="image/*" capture="environment"
-          style="display:none" onchange="escanearFoto(this)">
-        <button class="btn btn-primary btn-block" onclick="document.getElementById('qr-file').click()">
+      <!-- Modo 1: Foto -->
+      <div class="border border-[#e8f0fe] rounded-xl p-4 bg-slate-50/70">
+        <p class="text-[11px] font-bold text-[#1a73e8] uppercase tracking-wider mb-3">📸 Modo foto — recomendado en móvil</p>
+        <input type="file" id="qr-file" accept="image/*" capture="environment" class="hidden" onchange="escanearFoto(this)">
+        <button onclick="document.getElementById('qr-file').click()"
+          class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer border-0">
           📸 Abrir cámara / Seleccionar foto
         </button>
-        <div class="scan-hint">En móvil abre la cámara directamente · En PC elige una foto del QR</div>
+        <p class="text-[11px] text-gray-400 mt-2 text-center">En móvil abre la cámara · En PC elige una foto del QR</p>
       </div>
 
-      <!-- ── MODO 2: Lector USB / código manual ── -->
-      <div class="scan-section">
-        <div class="scan-label">⌨ Lector USB o código manual</div>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="qr-manual" class="qr-manual-input"
-            placeholder="Escanea con lector USB o escribe el ID del carnet..."
+      <!-- Modo 2: USB / Manual -->
+      <div class="border border-[#e8f0fe] rounded-xl p-4 bg-slate-50/70">
+        <p class="text-[11px] font-bold text-[#1a73e8] uppercase tracking-wider mb-3">⌨ Lector USB o código manual</p>
+        <div class="flex gap-2">
+          <input type="text" id="qr-manual" placeholder="Escanea con lector USB o escribe el ID..."
+            class="flex-1 px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors"
             onkeydown="if(event.key==='Enter') procesarManual()">
-          <button class="btn btn-success" onclick="procesarManual()">✔</button>
+          <button onclick="procesarManual()"
+            class="px-4 py-2.5 bg-[#2e7d32] hover:bg-[#1b5e20] text-white rounded-xl text-sm font-bold cursor-pointer border-0 transition-colors">✔</button>
         </div>
-        <div class="scan-hint">Los lectores USB escriben el código y presionan Enter automáticamente</div>
+        <p class="text-[11px] text-gray-400 mt-2 text-center">Los lectores USB presionan Enter automáticamente</p>
       </div>
 
-      <!-- ── MODO 3: Cámara en vivo (puede fallar en iframe de GAS) ── -->
-      <div class="scan-section" id="seccion-live">
-        <div class="scan-label" style="display:flex; align-items:center; justify-content:space-between;">
-          <span>🎥 Cámara en vivo</span>
-          <span style="font-size:10px; color:#aaa; font-weight:400; text-transform:none;">(puede no funcionar en algunos navegadores)</span>
+      <!-- Modo 3: Cámara en vivo -->
+      <div class="border border-[#e8f0fe] rounded-xl p-4 bg-slate-50/70" id="seccion-live">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-[11px] font-bold text-[#1a73e8] uppercase tracking-wider">🎥 Cámara en vivo</p>
+          <span class="text-[10px] text-gray-400">(puede no funcionar en algunos navegadores)</span>
         </div>
-        <div id="status-bar" style="margin-bottom:8px;">
-          <span class="dot inactive" id="dot"></span>
-          <span id="status-text">No iniciada</span>
+        <div id="status-bar" class="text-center text-xs text-gray-500 mb-2">
+          <span class="dot inactive" id="dot"></span><span id="status-text">No iniciada</span>
         </div>
-        <div id="reader"></div>
-        <button class="btn btn-primary btn-block" id="btn-start" onclick="iniciarEscaner()" style="margin-top:10px;">
+        <div id="reader" class="w-full rounded-xl overflow-hidden border-2 border-[#1a73e8]"></div>
+        <button id="btn-start" onclick="iniciarEscaner()"
+          class="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer border-0">
           ▶ Iniciar cámara en vivo
         </button>
-        <button class="btn btn-danger btn-block" id="btn-stop" onclick="detenerEscaner()" style="display:none; margin-top:10px;">
+        <button id="btn-stop" onclick="detenerEscaner()" style="display:none"
+          class="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#ea4335] hover:bg-[#b71c1c] text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer border-0">
           ⏹ Detener escáner
         </button>
       </div>
 
-      <!-- Resultado del escaneo (compartido por todos los modos) -->
-      <div id="resultado">
-        <div class="resultado-icon" id="res-icon"></div>
-        <div class="resultado-nombre" id="res-nombre"></div>
-        <div class="resultado-detalle" id="res-detalle"></div>
-        <span class="resultado-badge" id="res-badge"></span>
-      </div>
+      <!-- Resultado escaneo -->
+      <div id="resultado" style="display:none" class="rounded-xl px-5 py-4 text-sm anim-fade"></div>
 
     </div>
   </div>
 
-  <!-- ===== REGISTRO POR GRUPO ===== -->
-  <div class="card">
-    <div class="card-header">
-      <span>⌨ Registro Manual por Grupo</span>
-    </div>
-    <div class="card-body">
+  <!-- ═══ REGISTRO MANUAL POR GRUPO ═══ -->
+  <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div class="bg-[#1a73e8] text-white px-5 py-3.5 text-sm font-semibold">⌨ Registro Manual por Grupo</div>
+    <div class="p-4 sm:p-5">
 
-      <!-- Filtros -->
-      <div class="filtros-grid">
-        <div class="fg">
-          <label>Carrera</label>
-          <select id="mg-carrera"><option value="Todos">Todos</option></select>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Carrera</label>
+          <select id="mg-carrera" class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white"><option value="Todos">Todos</option></select>
         </div>
-        <div class="fg">
-          <label>Grado</label>
-          <select id="mg-grado"><option value="Todos">Todos</option></select>
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Grado</label>
+          <select id="mg-grado" class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white"><option value="Todos">Todos</option></select>
         </div>
-        <div class="fg">
-          <label>Sección</label>
-          <select id="mg-seccion"><option value="Todos">Todos</option></select>
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Sección</label>
+          <select id="mg-seccion" class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white"><option value="Todos">Todos</option></select>
         </div>
-        <div class="fg">
-          <label>Materia</label>
-          <input type="text" id="mg-materia" placeholder="Ej: Matemáticas">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Materia</label>
+          <input type="text" id="mg-materia" placeholder="Ej: Matemáticas"
+            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
         </div>
       </div>
-      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="cargarListaGrupo()">
+
+      <button onclick="cargarListaGrupo()"
+        class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer border-0">
         📋 Cargar estudiantes
       </button>
 
-      <!-- Lista resultante -->
-      <div id="mg-lista" style="margin-top:16px;display:none;">
-        <div id="alerta-grupo"></div>
+      <div id="mg-lista" style="display:none" class="mt-4">
+        <div id="alerta-grupo" style="display:none" class="px-4 py-2.5 rounded-xl text-sm font-medium mb-3"></div>
 
-        <!-- Contadores -->
-        <div class="mini-contadores">
-          <div class="mini-cnt"><span class="cdot cdot-p"></span><span class="mini-val" id="mg-cp">0</span> Puntuales</div>
-          <div class="mini-cnt"><span class="cdot cdot-t"></span><span class="mini-val" id="mg-ct">0</span> Tardíos</div>
-          <div class="mini-cnt"><span class="cdot cdot-a"></span><span class="mini-val" id="mg-ca">0</span> Ausentes</div>
-          <div class="mini-cnt" style="margin-left:auto;">Total: <span class="mini-val" id="mg-ctotal">0</span></div>
+        <!-- Contadores mini -->
+        <div class="flex flex-wrap gap-2 mb-3">
+          <div class="flex items-center gap-1.5 bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-[#2e7d32] flex-shrink-0"></span>
+            <span class="text-[#1a73e8] font-extrabold text-sm" id="mg-cp">0</span>&nbsp;Puntuales
+          </div>
+          <div class="flex items-center gap-1.5 bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-[#e65100] flex-shrink-0"></span>
+            <span class="text-[#1a73e8] font-extrabold text-sm" id="mg-ct">0</span>&nbsp;Tardíos
+          </div>
+          <div class="flex items-center gap-1.5 bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-[#c62828] flex-shrink-0"></span>
+            <span class="text-[#1a73e8] font-extrabold text-sm" id="mg-ca">0</span>&nbsp;Ausentes
+          </div>
+          <div class="ml-auto flex items-center gap-1.5 bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-semibold">
+            Total:&nbsp;<span class="text-[#1a73e8] font-extrabold text-sm" id="mg-ctotal">0</span>
+          </div>
         </div>
 
         <!-- Acciones rápidas -->
-        <div class="quick-bar">
-          <button class="btn-xs btn-xs-success" onclick="marcarTodosGrupo('Puntual')">✅ Todos presentes</button>
-          <button class="btn-xs btn-xs-warn"    onclick="marcarTodosGrupo('Tarde')">⚠ Todos tarde</button>
-          <button class="btn-xs btn-xs-danger"  onclick="marcarTodosGrupo('Ausente')">❌ Todos ausentes</button>
+        <div class="flex gap-2 flex-wrap pb-3 border-b border-slate-100 mb-3">
+          <button onclick="marcarTodosGrupo('Puntual')" class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border-0 cursor-pointer bg-[#d9ead3] text-[#2e7d32]">✅ Todos presentes</button>
+          <button onclick="marcarTodosGrupo('Tarde')"   class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border-0 cursor-pointer bg-[#fff3e0] text-[#e65100]">⚠ Todos tarde</button>
+          <button onclick="marcarTodosGrupo('Ausente')" class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border-0 cursor-pointer bg-[#fce8e6] text-[#c62828]">❌ Todos ausentes</button>
         </div>
 
         <div id="mg-body"></div>
 
-        <div id="mg-guardar-wrap" style="display:none; margin-top:14px;">
-          <button class="btn btn-success" style="width:100%;justify-content:center;"
-            id="btn-guardar-grupo" onclick="guardarListaGrupo()">
+        <div id="mg-guardar-wrap" style="display:none" class="mt-4">
+          <button id="btn-guardar-grupo" onclick="guardarListaGrupo()"
+            class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#2e7d32] hover:bg-[#1b5e20] text-white rounded-xl text-sm font-bold transition-colors cursor-pointer border-0">
             💾 Guardar asistencia
           </button>
         </div>
       </div>
-
     </div>
   </div>
 
-  <!-- ===== RESUMEN ASISTENCIA ===== -->
-  <div id="resumen-grupo">
-    <div class="res-header">
+  <!-- ═══ RESUMEN POST-GUARDADO ═══ -->
+  <div id="resumen-grupo" style="display:none" class="bg-white rounded-2xl shadow-sm overflow-hidden anim-fade">
+    <div class="bg-[#1a73e8] text-white px-5 py-3.5 font-bold text-sm flex items-center justify-between">
       <span>📊 Resumen de Asistencia</span>
-      <button class="btn-cerrar-res" onclick="document.getElementById('resumen-grupo').style.display='none'">✕ Cerrar</button>
+      <button onclick="document.getElementById('resumen-grupo').style.display='none'"
+        class="bg-white/20 border-0 text-white rounded-lg px-3 py-1 text-xs cursor-pointer">✕ Cerrar</button>
     </div>
-    <div class="res-body">
-      <div class="res-fecha" id="res-fecha-txt"></div>
-      <div class="res-grid">
-        <div class="res-col">
-          <div class="res-col-title">Total</div>
-          <div class="res-num" id="res-total">0</div>
-          <div class="res-breakdown">
-            <div class="res-bd-item"><span>♂ H</span><span class="res-bd-val" id="res-totalH">0</span></div>
-            <div class="res-bd-item"><span>♀ M</span><span class="res-bd-val" id="res-totalM">0</span></div>
+    <div class="p-4 sm:p-5">
+      <p class="text-xs text-gray-500 mb-4" id="res-fecha-txt"></p>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-slate-50 rounded-xl p-3 text-center">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Total</p>
+          <p class="text-2xl font-extrabold text-[#1a73e8]" id="res-total">0</p>
+          <div class="grid grid-cols-2 gap-1 mt-2">
+            <div class="bg-white rounded-lg px-1.5 py-1 flex justify-between text-[11px]"><span>♂ H</span><strong id="res-totalH">0</strong></div>
+            <div class="bg-white rounded-lg px-1.5 py-1 flex justify-between text-[11px]"><span>♀ M</span><strong id="res-totalM">0</strong></div>
           </div>
         </div>
-        <div class="res-col">
-          <div class="res-col-title">Presentes</div>
-          <div class="res-num verde" id="res-presentes">0</div>
-          <div class="res-breakdown">
-            <div class="res-bd-item"><span>♂ H</span><span class="res-bd-val" id="res-presentesH">0</span></div>
-            <div class="res-bd-item"><span>♀ M</span><span class="res-bd-val" id="res-presentesM">0</span></div>
+        <div class="bg-slate-50 rounded-xl p-3 text-center">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Presentes</p>
+          <p class="text-2xl font-extrabold text-[#2e7d32]" id="res-presentes">0</p>
+          <div class="grid grid-cols-2 gap-1 mt-2">
+            <div class="bg-white rounded-lg px-1.5 py-1 flex justify-between text-[11px]"><span>♂ H</span><strong id="res-presentesH">0</strong></div>
+            <div class="bg-white rounded-lg px-1.5 py-1 flex justify-between text-[11px]"><span>♀ M</span><strong id="res-presentesM">0</strong></div>
           </div>
         </div>
-        <div class="res-col">
-          <div class="res-col-title">Ausentes</div>
-          <div class="res-num rojo" id="res-ausentes">0</div>
-          <div class="res-breakdown">
-            <div class="res-bd-item"><span>♂ H</span><span class="res-bd-val" id="res-ausentesH">0</span></div>
-            <div class="res-bd-item"><span>♀ M</span><span class="res-bd-val" id="res-ausentesM">0</span></div>
+        <div class="bg-slate-50 rounded-xl p-3 text-center">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Ausentes</p>
+          <p class="text-2xl font-extrabold text-[#c62828]" id="res-ausentes">0</p>
+          <div class="grid grid-cols-2 gap-1 mt-2">
+            <div class="bg-white rounded-lg px-1.5 py-1 flex justify-between text-[11px]"><span>♂ H</span><strong id="res-ausentesH">0</strong></div>
+            <div class="bg-white rounded-lg px-1.5 py-1 flex justify-between text-[11px]"><span>♀ M</span><strong id="res-ausentesM">0</strong></div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ===== HISTORIAL DEL DÍA ===== -->
-  <div class="card">
-    <div class="card-header">📋 Asistencia de Hoy (<span id="cont-presentes">0</span> presentes)</div>
-    <div class="card-body" id="historial-body">
-      <div class="empty-state">Sin registros por ahora</div>
+  <!-- ═══ HISTORIAL DEL DÍA ═══ -->
+  <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div class="bg-[#1a73e8] text-white px-5 py-3.5 text-sm font-semibold">
+      📋 Asistencia de Hoy (<span id="cont-presentes">0</span> presentes)
+    </div>
+    <div class="p-4 sm:p-5" id="historial-body">
+      <div class="text-center text-gray-400 py-6 text-sm">Sin registros por ahora</div>
     </div>
   </div>
 
-</div>
+</div><!-- /container -->
 
 <script>
   let html5QrCode = null;
@@ -540,24 +260,20 @@
   let ultimoCodigo = '';
   let historial    = [];
 
-  // ---- MODO 1: Escanear foto ----
+  // ── Modo 1: Foto ──
   function escanearFoto(input) {
     if (!input.files || !input.files[0]) return;
     mostrarCargando();
     if (!html5QrCode) html5QrCode = new Html5Qrcode('reader');
     html5QrCode.scanFile(input.files[0], true)
-      .then(decoded => {
-        input.value = '';
-        // No usar debounce para foto — cada captura es intencional
-        procesarCodigo(decoded);
-      })
+      .then(decoded => { input.value = ''; procesarCodigo(decoded); })
       .catch(() => {
         input.value = '';
         mostrarRespuesta({ ok: false, mensaje: 'No se pudo leer el QR. Intenta con mejor iluminación o más cerca.' });
       });
   }
 
-  // ---- MODO 2: Código manual / lector USB ----
+  // ── Modo 2: Manual / USB ──
   function procesarManual() {
     const input  = document.getElementById('qr-manual');
     const codigo = input.value.trim();
@@ -567,76 +283,59 @@
     procesarCodigo(codigo);
   }
 
-  // ---- MODO 3: INICIAR escáner en vivo ----
+  // ── Modo 3: Cámara en vivo ──
   function iniciarEscaner() {
     if (!html5QrCode) html5QrCode = new Html5Qrcode('reader');
     const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
-
     const _ok = () => {
       escaneando = true;
       document.getElementById('dot').className = 'dot active';
       document.getElementById('status-text').textContent = 'Activo — apunta al QR del carnet';
-      document.getElementById('btn-stop').style.display = '';
+      document.getElementById('btn-stop').style.display  = '';
       document.getElementById('btn-start').style.display = 'none';
     };
-
     const _fail = err => {
       const s = String(err && err.message || err).toLowerCase();
       let msg = 'No se pudo iniciar la cámara.';
       if (s.includes('denied') || s.includes('notallowed') || s.includes('permission'))
-        msg = 'Permiso denegado. Usa el Modo foto o el Modo lector USB que están arriba.';
+        msg = 'Permiso denegado. Usa el Modo foto o el Modo lector USB.';
       else if (s.includes('notfound') || s.includes('no devices'))
-        msg = 'No se encontró cámara. Usa los modos alternativos arriba.';
-      else if (s.includes('notreadable'))
-        msg = 'Cámara en uso por otra app. Ciérrala e intenta de nuevo.';
+        msg = 'No se encontró cámara. Usa los modos alternativos.';
       mostrarEstado(false, msg);
     };
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      _fail('El navegador no soporta acceso a cámara en vivo.');
-      return;
-    }
-
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { _fail('no support'); return; }
     html5QrCode.start({ facingMode: { exact: 'environment' } }, config, onQrSuccess, onQrError)
-      .then(_ok)
-      .catch(() =>
+      .then(_ok).catch(() =>
         html5QrCode.start({ facingMode: 'environment' }, config, onQrSuccess, onQrError)
-          .then(_ok)
-          .catch(() =>
+          .then(_ok).catch(() =>
             html5QrCode.start({ facingMode: 'user' }, config, onQrSuccess, onQrError)
-              .then(_ok)
-              .catch(_fail)
+              .then(_ok).catch(_fail)
           )
       );
   }
 
-  // ---- DETENER ----
   function detenerEscaner() {
     if (html5QrCode && escaneando) {
       html5QrCode.stop().then(() => {
         escaneando = false;
         document.getElementById('dot').className = 'dot inactive';
         document.getElementById('status-text').textContent = 'Escáner detenido';
-        document.getElementById('btn-stop').style.display = 'none';
+        document.getElementById('btn-stop').style.display  = 'none';
         document.getElementById('btn-start').style.display = '';
       });
     }
   }
 
-  // ---- CUANDO LEE QR ----
   function onQrSuccess(decodedText) {
-    if (decodedText === ultimoCodigo) return; // evitar doble registro
+    if (decodedText === ultimoCodigo) return;
     ultimoCodigo = decodedText;
     setTimeout(() => { ultimoCodigo = ''; }, 4000);
-
-    // Feedback visual inmediato
     mostrarCargando();
     procesarCodigo(decodedText);
   }
+  function onQrError() {}
 
-  function onQrError() { /* silencioso */ }
-
-  // ---- REGISTRO POR GRUPO ----
+  // ── Registro por grupo ──
   let grupoEstudiantes = [];
 
   function cargarFiltrosGrupo() {
@@ -652,77 +351,61 @@
   function poblarSelect(id, valores) {
     const sel = document.getElementById(id);
     sel.innerHTML = '<option value="Todos">Todos</option>';
-    valores.forEach(v => {
-      const o = document.createElement('option');
-      o.value = o.textContent = v;
-      sel.appendChild(o);
-    });
+    valores.forEach(v => { const o = document.createElement('option'); o.value = o.textContent = v; sel.appendChild(o); });
   }
 
   function cargarListaGrupo() {
     const carrera = document.getElementById('mg-carrera').value;
     const grado   = document.getElementById('mg-grado').value;
     const seccion = document.getElementById('mg-seccion').value;
-    const fecha   = null; // el servidor usa su timezone local
-
     document.getElementById('mg-lista').style.display = '';
-    document.getElementById('mg-body').innerHTML = '<div style="text-align:center;padding:16px;"><div class="spinner"></div></div>';
+    document.getElementById('mg-body').innerHTML = '<div class="spinner"></div>';
     document.getElementById('mg-guardar-wrap').style.display = 'none';
-
     google.script.run
       .withSuccessHandler(data => {
         grupoEstudiantes = data;
         renderGrupo(data);
         document.getElementById('mg-guardar-wrap').style.display = data.length ? '' : 'none';
       })
-      .withFailureHandler(() => {
-        document.getElementById('mg-body').innerHTML = '<div class="empty-state">Error al cargar</div>';
-      })
-      .obtenerEstudiantesPorGrupo(carrera, grado, seccion, fecha);
+      .withFailureHandler(() => { document.getElementById('mg-body').innerHTML = '<div class="text-center text-gray-400 py-5 text-sm">Error al cargar</div>'; })
+      .obtenerEstudiantesPorGrupo(carrera, grado, seccion, null);
   }
 
   function renderGrupo(data) {
     if (!data || data.length === 0) {
       document.getElementById('mg-body').innerHTML =
-        '<div class="empty-state" style="padding:20px 0;">No hay estudiantes con esos filtros.<br><small>Asegúrate de asignarles Grado y Sección.</small></div>';
+        '<div class="text-center text-gray-400 py-6 text-sm">No hay estudiantes con esos filtros.<br><small>Asegúrate de asignarles Grado y Sección.</small></div>';
       actualizarContadoresGrupo();
       return;
     }
-
-    document.getElementById('mg-body').innerHTML = `
-      <div class="glista">
-        ${data.map((e, i) => {
-          const estado = e.estadoHoy || 'Ausente';
-          const tieneRegistro = e.estadoHoy !== null;
-          return `
-            <div class="grow" id="grow-${i}">
-              <div class="gavatar ${estado.toLowerCase()}" id="gav-${i}">${e.nombre.charAt(0).toUpperCase()}</div>
-              <div class="ginfo">
-                <div class="gnombre">${e.nombre}</div>
-                <div class="gmeta">${e.id} · ${[e.carrera, e.grado ? 'G' + e.grado : '', e.seccion ? 'Sec.' + e.seccion : ''].filter(Boolean).join(' · ')}</div>
-              </div>
-              <div class="etoggle">
-                <input type="radio" name="eg-${i}" id="ep-${i}" value="Puntual"
-                  ${estado === 'Puntual' ? 'checked' : ''} onchange="onEstadoGrupoCambio(${i})">
-                <label for="ep-${i}">✅</label>
-                <input type="radio" name="eg-${i}" id="et-${i}" value="Tarde"
-                  ${estado === 'Tarde' ? 'checked' : ''} onchange="onEstadoGrupoCambio(${i})">
-                <label for="et-${i}">⚠</label>
-                <input type="radio" name="eg-${i}" id="ea-${i}" value="Ausente"
-                  ${!tieneRegistro || estado === 'Ausente' ? 'checked' : ''} onchange="onEstadoGrupoCambio(${i})">
-                <label for="ea-${i}">❌</label>
-              </div>
-            </div>`;
-        }).join('')}
-      </div>`;
-
+    document.getElementById('mg-body').innerHTML = `<div>
+      ${data.map((e, i) => {
+        const estado = e.estadoHoy || 'Ausente';
+        const tR     = e.estadoHoy !== null;
+        return `<div style="display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid #f0f4f8;border-radius:8px;transition:background .15s;" id="grow-${i}"
+          onmouseover="this.style.background='#f8f9ff'" onmouseout="this.style.background=''">
+          <div class="gavatar ${estado.toLowerCase()}" id="gav-${i}">${e.nombre.charAt(0).toUpperCase()}</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;">${e.nombre}</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;">${e.id} · ${[e.carrera, e.grado ? 'G'+e.grado:'', e.seccion?'Sec.'+e.seccion:''].filter(Boolean).join(' · ')}</div>
+          </div>
+          <div class="etoggle" style="display:flex;border-radius:7px;overflow:hidden;border:2px solid #ddd;flex-shrink:0;">
+            <input type="radio" name="eg-${i}" id="ep-${i}" value="Puntual" ${estado==='Puntual'?'checked':''} onchange="onEstadoGrupoCambio(${i})">
+            <label for="ep-${i}">✅</label>
+            <input type="radio" name="eg-${i}" id="et-${i}" value="Tarde"   ${estado==='Tarde'?'checked':''} onchange="onEstadoGrupoCambio(${i})">
+            <label for="et-${i}">⚠</label>
+            <input type="radio" name="eg-${i}" id="ea-${i}" value="Ausente" ${!tR||estado==='Ausente'?'checked':''} onchange="onEstadoGrupoCambio(${i})">
+            <label for="ea-${i}">❌</label>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
     actualizarContadoresGrupo();
   }
 
   function onEstadoGrupoCambio(i) {
     const val = document.querySelector(`input[name="eg-${i}"]:checked`).value;
-    const av  = document.getElementById('gav-' + i);
-    av.className = 'gavatar ' + val.toLowerCase();
+    document.getElementById('gav-' + i).className = 'gavatar ' + val.toLowerCase();
     actualizarContadoresGrupo();
   }
 
@@ -742,9 +425,9 @@
       else if (r.value === 'Tarde') t++;
       else a++;
     });
-    document.getElementById('mg-cp').textContent    = p;
-    document.getElementById('mg-ct').textContent    = t;
-    document.getElementById('mg-ca').textContent    = a;
+    document.getElementById('mg-cp').textContent     = p;
+    document.getElementById('mg-ct').textContent     = t;
+    document.getElementById('mg-ca').textContent     = a;
     document.getElementById('mg-ctotal').textContent = grupoEstudiantes.length;
   }
 
@@ -753,98 +436,67 @@
       const r = document.querySelector(`input[name="eg-${i}"]:checked`);
       return { id: e.id, observacion: r ? r.value : 'Ausente' };
     });
-
     const materia = document.getElementById('mg-materia').value.trim() || 'General';
-    const fecha   = null; // el servidor usa su timezone local
-
-    document.getElementById('btn-guardar-grupo').disabled = true;
-    document.getElementById('btn-guardar-grupo').textContent = '⏳ Guardando...';
-
+    const btn = document.getElementById('btn-guardar-grupo');
+    btn.disabled = true;
+    btn.textContent = '⏳ Guardando...';
     google.script.run
       .withSuccessHandler(res => {
         const el = document.getElementById('alerta-grupo');
-        el.textContent  = res.mensaje;
-        el.className    = res.ok ? 'ok' : 'error';
-        el.style.display = 'block';
+        el.textContent = res.mensaje; el.className = res.ok ? 'ok' : 'error'; el.style.display = 'block';
         setTimeout(() => { el.style.display = 'none'; }, 5000);
-
-        document.getElementById('btn-guardar-grupo').disabled = false;
-        document.getElementById('btn-guardar-grupo').innerHTML = '💾 Guardar asistencia';
-
-        if (res.ok) {
-          cargarListaGrupo();     // recargar lista
-          cargarHistorialHoy();   // actualizar historial general
-          if (res.resumen) mostrarResumenGrupo(res.resumen);
-        }
+        btn.disabled = false; btn.innerHTML = '💾 Guardar asistencia';
+        if (res.ok) { cargarListaGrupo(); cargarHistorialHoy(); if (res.resumen) mostrarResumenGrupo(res.resumen); }
       })
       .withFailureHandler(err => {
         const el = document.getElementById('alerta-grupo');
-        el.textContent  = 'Error: ' + err.message;
-        el.className    = 'error';
-        el.style.display = 'block';
-        document.getElementById('btn-guardar-grupo').disabled = false;
-        document.getElementById('btn-guardar-grupo').innerHTML = '💾 Guardar asistencia';
+        el.textContent = 'Error: ' + err.message; el.className = 'error'; el.style.display = 'block';
+        btn.disabled = false; btn.innerHTML = '💾 Guardar asistencia';
       })
-      .registrarAsistenciaMasiva(registros, materia, fecha);
+      .registrarAsistenciaMasiva(registros, materia, null);
   }
 
-  // ---- LLAMADA AL SERVIDOR ----
+  // ── Servidor ──
   function procesarCodigo(codigo) {
     google.script.run
-      .withSuccessHandler(respuesta => mostrarRespuesta(respuesta))
-      .withFailureHandler(err => mostrarRespuesta({ ok: false, mensaje: 'Error de conexión: ' + err.message }))
+      .withSuccessHandler(r => mostrarRespuesta(r))
+      .withFailureHandler(err => mostrarRespuesta({ ok: false, mensaje: 'Error: ' + err.message }))
       .registrarAsistencia(codigo);
   }
 
-  // ---- UI: RESULTADO ----
+  // ── UI ──
   function mostrarCargando() {
     const div = document.getElementById('resultado');
-    div.className = '';
-    div.style.display = 'block';
+    div.className = ''; div.style.display = 'block';
+    div.style.background = '#f8f9ff'; div.style.borderLeft = '5px solid #1a73e8'; div.style.color = '#1a73e8';
     div.innerHTML = '<div style="text-align:center;padding:12px;"><div class="spinner"></div><br><small>Registrando...</small></div>';
   }
 
   function mostrarRespuesta(r) {
-    const div    = document.getElementById('resultado');
-    div.style.display = 'block';
-    div.style.animation = 'none';
-    void div.offsetWidth; // reflow
-    div.style.animation = '';
-
+    const div = document.getElementById('resultado');
+    div.style.display = 'block'; div.style.animation = 'none'; void div.offsetWidth; div.style.animation = '';
     if (r.ok) {
       div.className = 'ok';
-      const badgeClass = r.observacion === 'Puntual' ? 'badge-puntual' : 'badge-tarde';
-      div.innerHTML = `
-        <div class="resultado-icon">✅</div>
+      const bCls = r.observacion === 'Puntual' ? 'badge-puntual' : 'badge-tarde';
+      div.innerHTML = `<div class="resultado-icon">✅</div>
         <div class="resultado-nombre">${r.estudiante.nombre}</div>
         <div class="resultado-detalle">${r.estudiante.id} · ${r.estudiante.programa}</div>
         <div class="resultado-detalle">Hora: ${r.hora}</div>
-        <span class="resultado-badge ${badgeClass}">${r.observacion}</span>
-      `;
-      // Agregar al historial local
-      historial.unshift(r);
-      renderHistorial();
+        <span class="resultado-badge ${bCls}">${r.observacion}</span>`;
+      historial.unshift(r); renderHistorial();
     } else if (r.estudiante) {
       div.className = 'warn';
-      div.innerHTML = `
-        <div class="resultado-icon">⚠️</div>
+      div.innerHTML = `<div class="resultado-icon">⚠️</div>
         <div class="resultado-nombre">${r.estudiante.nombre}</div>
-        <div class="resultado-detalle">${r.mensaje}</div>
-      `;
+        <div class="resultado-detalle">${r.mensaje}</div>`;
     } else {
       div.className = 'error';
-      div.innerHTML = `
-        <div class="resultado-icon">❌</div>
+      div.innerHTML = `<div class="resultado-icon">❌</div>
         <div class="resultado-nombre">No encontrado</div>
-        <div class="resultado-detalle">${r.mensaje}</div>
-      `;
+        <div class="resultado-detalle">${r.mensaje}</div>`;
     }
-
-    // Auto ocultar tras 5 s
-    clearTimeout(window._hideTimeout);
-    window._hideTimeout = setTimeout(() => {
-      div.style.display = 'none';
-    }, 5000);
+    clearTimeout(window._hideT);
+    window._hideT = setTimeout(() => { div.style.display = 'none'; }, 5000);
   }
 
   function mostrarEstado(ok, msg) {
@@ -852,16 +504,14 @@
     document.getElementById('dot').className = ok ? 'dot active' : 'dot inactive';
   }
 
-  // ---- HISTORIAL DEL DÍA (carga inicial) ----
+  // ── Historial del día ──
   function cargarHistorialHoy() {
     google.script.run
       .withSuccessHandler(resumen => {
         document.getElementById('cont-presentes').textContent = resumen.presentes;
         historial = resumen.registros.map(r => ({
-          ok: true,
-          estudiante: { nombre: r.nombre, id: r.id, programa: r.programa },
-          hora: r.hora,
-          observacion: r.obs
+          ok: true, estudiante: { nombre: r.nombre, id: r.id, programa: r.programa },
+          hora: r.hora, observacion: r.obs
         }));
         renderHistorial();
       })
@@ -872,40 +522,39 @@
     const body = document.getElementById('historial-body');
     document.getElementById('cont-presentes').textContent = historial.length;
     if (historial.length === 0) {
-      body.innerHTML = '<div class="empty-state">Sin registros por ahora</div>';
+      body.innerHTML = '<div class="text-center text-gray-400 py-6 text-sm">Sin registros por ahora</div>';
       return;
     }
-    body.innerHTML = historial.map(r => `
-      <div class="historial-item">
-        <div class="hist-hora">${r.hora ? r.hora.substring(0,5) : '--:--'}</div>
-        <div>
-          <div class="hist-nombre">${r.estudiante.nombre}</div>
-          <div class="hist-id">${r.estudiante.id}</div>
+    body.innerHTML = historial.map(r => {
+      const isP = r.observacion === 'Puntual';
+      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f0f4f8;">
+        <div style="background:#e8f0fe;color:#1a73e8;border-radius:8px;padding:4px 8px;font-size:12px;font-weight:700;min-width:60px;text-align:center;">${r.hora ? r.hora.toString().substring(0,5) : '--:--'}</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:600;">${r.estudiante.nombre}</div>
+          <div style="font-size:12px;color:#666;">${r.estudiante.id}</div>
         </div>
-        <span class="hist-badge ${r.observacion === 'Puntual' ? 'p' : 't'}">${r.observacion}</span>
-      </div>
-    `).join('');
+        <span style="font-size:11px;padding:3px 8px;border-radius:12px;font-weight:600;background:${isP?'#d9ead3':'#fff3e0'};color:${isP?'#2e7d32':'#e65100'};">${r.observacion}</span>
+      </div>`;
+    }).join('');
   }
 
-  // ---- RESUMEN POST-GUARDADO ----
   function mostrarResumenGrupo(r) {
-    document.getElementById('res-fecha-txt').textContent =
-      'Fecha: ' + r.fecha + (r.materia && r.materia !== 'General' ? '  ·  Materia: ' + r.materia : '');
-    document.getElementById('res-total').textContent     = r.total;
-    document.getElementById('res-totalH').textContent    = r.totalH;
-    document.getElementById('res-totalM').textContent    = r.totalM;
-    document.getElementById('res-presentes').textContent = r.presentes;
-    document.getElementById('res-presentesH').textContent= r.presentesH;
-    document.getElementById('res-presentesM').textContent= r.presentesM;
-    document.getElementById('res-ausentes').textContent  = r.ausentes;
-    document.getElementById('res-ausentesH').textContent = r.ausentesH;
-    document.getElementById('res-ausentesM').textContent = r.ausentesM;
+    document.getElementById('res-fecha-txt').textContent = 'Fecha: ' + r.fecha + (r.materia && r.materia !== 'General' ? '  ·  Materia: ' + r.materia : '');
+    document.getElementById('res-total').textContent      = r.total;
+    document.getElementById('res-totalH').textContent     = r.totalH;
+    document.getElementById('res-totalM').textContent     = r.totalM;
+    document.getElementById('res-presentes').textContent  = r.presentes;
+    document.getElementById('res-presentesH').textContent = r.presentesH;
+    document.getElementById('res-presentesM').textContent = r.presentesM;
+    document.getElementById('res-ausentes').textContent   = r.ausentes;
+    document.getElementById('res-ausentesH').textContent  = r.ausentesH;
+    document.getElementById('res-ausentesM').textContent  = r.ausentesM;
     const card = document.getElementById('resumen-grupo');
     card.style.display = '';
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // ---- NAVEGACIÓN ----
+  // ── Navegación ──
   let _webAppUrl = '';
   function nav(page) {
     const go = u => { window.top.location.href = u + (page ? '?page=' + page : ''); };
@@ -913,13 +562,11 @@
     else google.script.run.withSuccessHandler(u => { _webAppUrl = u; go(u); }).getWebAppUrl();
   }
 
-  // ---- INIT ----
+  // ── Init ──
   window.onload = () => {
     google.script.run.withSuccessHandler(u => { _webAppUrl = u; }).getWebAppUrl();
     cargarHistorialHoy();
     cargarFiltrosGrupo();
-    // No auto-iniciar cámara en vivo: el iframe de GAS la bloquea.
-    // El usuario puede usar Modo foto o Modo lector USB sin necesidad de permisos.
   };
 </script>
 </body>

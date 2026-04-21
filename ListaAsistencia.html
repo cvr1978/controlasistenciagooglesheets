@@ -4,316 +4,192 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lista de Asistencia</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; }
-
-    nav {
-      background: #1a73e8; color: #fff;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 20px; height: 56px; box-shadow: 0 2px 6px rgba(0,0,0,.25);
-    }
-    nav .brand { font-size: 18px; font-weight: 700; }
-    nav .nav-links a { color: rgba(255,255,255,.85); text-decoration: none; margin-left: 18px; font-size: 14px; }
-    nav .nav-links a:hover { color: #fff; }
-
-    .container { max-width: 900px; margin: 30px auto; padding: 0 16px; }
-
-    .card { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.08); margin-bottom: 20px; overflow: hidden; }
-    .card-header {
-      background: #1a73e8; color: #fff;
-      padding: 14px 20px; font-size: 15px; font-weight: 600;
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    }
-    .card-body { padding: 20px; }
-
-    /* Filtros */
-    .filtros-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: 14px;
-      margin-bottom: 16px;
-    }
-    .form-group label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
-    .form-group select, .form-group input {
-      width: 100%; padding: 9px 12px; border: 2px solid #ddd;
-      border-radius: 8px; font-size: 14px; outline: none; transition: border-color .2s;
-      background: #fff;
-    }
-    .form-group select:focus, .form-group input:focus { border-color: #1a73e8; }
-
-    .btn { display: inline-flex; align-items: center; gap: 5px; padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; transition: all .2s; }
-    .btn-primary { background: #1a73e8; color: #fff; }
-    .btn-primary:hover { background: #1557b0; }
-    .btn-success { background: #2e7d32; color: #fff; }
-    .btn-success:hover { background: #1b5e20; }
-    .btn-outline { background: #fff; color: #1a73e8; border: 2px solid #1a73e8; }
-    .btn-outline:hover { background: #e8f0fe; }
-    .btn-sm { padding: 6px 12px; font-size: 13px; }
-    .btn:disabled { opacity: .5; cursor: not-allowed; }
-
-    /* Barra de acciones de la lista */
-    .lista-toolbar {
-      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      padding: 12px 0; border-bottom: 2px solid #f0f4f8; margin-bottom: 16px;
-    }
-    .lista-toolbar .spacer { flex: 1; }
-
-    /* Contador de estados */
-    .contadores {
-      display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
-    }
-    .cnt {
-      display: flex; align-items: center; gap: 6px;
-      background: #f8f9ff; border-radius: 8px; padding: 6px 12px;
-      font-size: 13px; font-weight: 600;
-    }
-    .cnt .dot { width: 10px; height: 10px; border-radius: 50%; }
-    .dot-p { background: #2e7d32; }
-    .dot-t { background: #e65100; }
-    .dot-a { background: #c62828; }
-    .cnt-val { font-size: 18px; font-weight: 800; color: #1a73e8; }
-
-    /* Tabla de estudiantes */
-    .student-list { display: flex; flex-direction: column; gap: 0; }
-
-    .student-row {
-      display: grid;
-      grid-template-columns: 36px 1fr auto;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 8px;
-      border-bottom: 1px solid #f0f4f8;
-      border-radius: 8px;
-      transition: background .15s;
-    }
-    .student-row:hover { background: #f8f9ff; }
-    .student-row:last-child { border-bottom: none; }
-
-    .avatar {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: #1a73e8; color: #fff;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 14px; flex-shrink: 0;
-    }
-    .avatar.ausente  { background: #c62828; }
-    .avatar.puntual  { background: #2e7d32; }
-    .avatar.tarde    { background: #e65100; }
-
-    .stu-info .stu-nombre { font-size: 14px; font-weight: 600; color: #1a1a1a; }
-    .stu-info .stu-meta   { font-size: 11px; color: #888; margin-top: 2px; }
-
-    /* Radio-like toggle buttons */
-    .estado-toggle { display: flex; border-radius: 8px; overflow: hidden; border: 2px solid #ddd; flex-shrink: 0; }
-    .estado-toggle input[type="radio"] { display: none; }
-    .estado-toggle label {
-      padding: 6px 12px; font-size: 12px; font-weight: 700;
-      cursor: pointer; user-select: none;
-      background: #f8f9ff; color: #888;
-      transition: all .15s; border-right: 1px solid #ddd;
-      white-space: nowrap;
-    }
-    .estado-toggle label:last-of-type { border-right: none; }
-    .estado-toggle input[value="Puntual"]:checked + label  { background: #2e7d32; color: #fff; }
-    .estado-toggle input[value="Tarde"]:checked   + label  { background: #e65100; color: #fff; }
-    .estado-toggle input[value="Ausente"]:checked + label  { background: #c62828; color: #fff; }
-
-    /* Locked row (ya registrado por QR) */
-    .student-row.locked { opacity: .75; }
-    .locked-badge {
-      font-size: 10px; background: #e8f0fe; color: #1a73e8;
-      border-radius: 4px; padding: 2px 6px; font-weight: 700;
-      display: inline-block; margin-left: 6px; vertical-align: middle;
-    }
-
-    /* Alerta */
-    #alerta {
-      display: none; padding: 14px 18px; border-radius: 10px;
-      font-size: 14px; margin-bottom: 16px; animation: fadeIn .3s ease;
-    }
-    #alerta.ok    { background: #d9ead3; color: #2e7d32; border-left: 5px solid #2e7d32; }
-    #alerta.error { background: #fce8e6; color: #c62828; border-left: 5px solid #c62828; }
-
-    .empty-state { text-align: center; color: #aaa; padding: 50px 20px; font-size: 14px; }
-    .spinner { border: 3px solid #e8f0fe; border-top: 3px solid #1a73e8; border-radius: 50%; width: 28px; height: 28px; animation: spin .7s linear infinite; margin: 30px auto; }
-    @keyframes spin  { to { transform: rotate(360deg); } }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-
-    @media (max-width: 600px) {
-      .filtros-grid { grid-template-columns: 1fr 1fr; }
-      .estado-toggle label { padding: 6px 8px; font-size: 11px; }
-    }
-    @media (max-width: 420px) {
-      .filtros-grid { grid-template-columns: 1fr; }
-      .student-row { grid-template-columns: 32px 1fr; }
-      .estado-toggle { grid-column: 1 / -1; margin-left: 44px; }
-    }
-
-    /* ---- RESUMEN ---- */
-    #resumen-card {
-      display: none;
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 2px 12px rgba(0,0,0,.08);
-      overflow: hidden;
-      margin-bottom: 20px;
-      animation: fadeIn .4s ease;
-    }
-    .res-header {
-      background: #1a73e8; color: #fff;
-      padding: 13px 20px; font-size: 15px; font-weight: 700;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .res-body { padding: 18px 20px; }
-    .res-fecha { font-size: 12px; color: #555; margin-bottom: 14px; }
-    .res-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-    .res-col {
-      background: #f0f4f8; border-radius: 10px;
-      padding: 10px 12px; text-align: center;
-    }
-    .res-col-title { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
-    .res-num { font-size: 22px; font-weight: 800; color: #1a73e8; line-height: 1; }
-    .res-num.verde  { color: #2e7d32; }
-    .res-num.rojo   { color: #c62828; }
-    .res-breakdown {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-      font-size: 11px; margin-top: 8px;
-    }
-    .res-bd-item {
-      background: #fff; border-radius: 6px; padding: 5px 8px;
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .res-bd-val { font-weight: 800; font-size: 13px; }
-    .btn-cerrar-res {
-      background: rgba(255,255,255,.2); border: none; color: #fff;
-      border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px;
-    }
+    /* ── Radio toggle (sibling selectors) ── */
+    .estado-toggle input[type="radio"] { display:none; }
+    .estado-toggle label { padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;user-select:none;
+      background:#f8f9ff;color:#888;transition:all .15s;border-right:1px solid #e2e8f0;white-space:nowrap; }
+    .estado-toggle label:last-of-type { border-right:none; }
+    .estado-toggle input[value="Puntual"]:checked + label  { background:#2e7d32;color:#fff; }
+    .estado-toggle input[value="Tarde"]:checked   + label  { background:#e65100;color:#fff; }
+    .estado-toggle input[value="Ausente"]:checked + label  { background:#c62828;color:#fff; }
+    /* ── Avatar colors set by JS ── */
+    .avatar { width:36px;height:36px;border-radius:50%;background:#1a73e8;color:#fff;
+      display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0; }
+    .avatar.ausente  { background:#c62828; }
+    .avatar.puntual  { background:#2e7d32; }
+    .avatar.tarde    { background:#e65100; }
+    /* ── Alert states set by JS className ── */
+    #alerta.ok    { background:#d9ead3;color:#2e7d32;border-left:5px solid #2e7d32; }
+    #alerta.error { background:#fce8e6;color:#c62828;border-left:5px solid #c62828; }
+    /* ── Animations ── */
+    @keyframes spin    { to{transform:rotate(360deg)} }
+    @keyframes fadeIn  { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+    .spinner  { border:3px solid #dbeafe;border-top-color:#1a73e8;border-radius:9999px;
+      width:28px;height:28px;animation:spin .7s linear infinite;margin:30px auto; }
+    .anim-fade { animation:fadeIn .3s ease; }
   </style>
 </head>
-<body>
+<body class="bg-slate-100 min-h-screen" style="font-family:'Segoe UI',system-ui,sans-serif">
 
-<nav>
-  <div class="brand">📋 Lista de Asistencia</div>
-  <div class="nav-links">
-    <a onclick="nav('')"             href="javascript:void(0)">📷 Escáner</a>
-    <a onclick="nav('dashboard')"    href="javascript:void(0)">📊 Dashboard</a>
-    <a onclick="nav('estudiantes')"  href="javascript:void(0)">👥 Estudiantes</a>
+<!-- ═══ NAVBAR ═══ -->
+<nav class="bg-[#1a73e8] shadow-lg sticky top-0 z-50">
+  <div class="max-w-4xl mx-auto px-4">
+    <div class="flex items-center justify-between h-14">
+      <span class="text-white font-bold text-base sm:text-lg">📋 Lista de Asistencia</span>
+      <div class="hidden sm:flex items-center gap-5">
+        <a onclick="nav('')"             href="javascript:void(0)" class="text-white/80 hover:text-white text-sm cursor-pointer transition-colors">📷 Escáner</a>
+        <a onclick="nav('dashboard')"    href="javascript:void(0)" class="text-white/80 hover:text-white text-sm cursor-pointer transition-colors">📊 Dashboard</a>
+        <a onclick="nav('estudiantes')"  href="javascript:void(0)" class="text-white/80 hover:text-white text-sm cursor-pointer transition-colors">👥 Estudiantes</a>
+      </div>
+      <button onclick="document.getElementById('mnav').classList.toggle('hidden')"
+        class="sm:hidden text-white text-2xl leading-none px-2 py-1 rounded bg-transparent border-0 cursor-pointer">☰</button>
+    </div>
+  </div>
+  <div id="mnav" class="hidden sm:hidden bg-[#1557b0] px-4 pb-3 space-y-0.5">
+    <a onclick="nav('');document.getElementById('mnav').classList.add('hidden')"            href="javascript:void(0)" class="flex gap-2 text-white/85 hover:text-white py-2.5 text-sm border-b border-white/10 cursor-pointer">📷 Escáner</a>
+    <a onclick="nav('dashboard');document.getElementById('mnav').classList.add('hidden')"   href="javascript:void(0)" class="flex gap-2 text-white/85 hover:text-white py-2.5 text-sm border-b border-white/10 cursor-pointer">📊 Dashboard</a>
+    <a onclick="nav('estudiantes');document.getElementById('mnav').classList.add('hidden')" href="javascript:void(0)" class="flex gap-2 text-white/85 hover:text-white py-2.5 text-sm cursor-pointer">👥 Estudiantes</a>
   </div>
 </nav>
 
-<div class="container">
+<div class="max-w-4xl mx-auto px-4 py-5 space-y-5">
 
-  <!-- ===== FILTROS ===== -->
-  <div class="card">
-    <div class="card-header">🔍 Seleccionar Grupo</div>
-    <div class="card-body">
-      <div class="filtros-grid">
-        <div class="form-group">
-          <label>Carrera / Programa</label>
-          <select id="f-carrera" onchange="sincronizarFiltros()">
+  <!-- ═══ FILTROS ═══ -->
+  <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div class="bg-[#1a73e8] text-white px-5 py-3.5 text-sm font-semibold">🔍 Seleccionar Grupo</div>
+    <div class="p-4 sm:p-5">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Carrera</label>
+          <select id="f-carrera" onchange="sincronizarFiltros()"
+            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white">
             <option value="Todos">Todos</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Grado</label>
-          <select id="f-grado" onchange="sincronizarFiltros()">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Grado</label>
+          <select id="f-grado" onchange="sincronizarFiltros()"
+            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white">
             <option value="Todos">Todos</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Sección</label>
-          <select id="f-seccion">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Sección</label>
+          <select id="f-seccion"
+            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white">
             <option value="Todos">Todos</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Materia</label>
-          <input type="text" id="f-materia" placeholder="Ej: Matemáticas">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Materia</label>
+          <input type="text" id="f-materia" placeholder="Ej: Matemáticas"
+            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
         </div>
-        <div class="form-group">
-          <label>Fecha</label>
-          <input type="date" id="f-fecha">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Fecha</label>
+          <input type="date" id="f-fecha"
+            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
         </div>
       </div>
-      <button class="btn btn-primary" onclick="cargarLista()">📋 Cargar lista de estudiantes</button>
+      <button onclick="cargarLista()"
+        class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer border-0">
+        📋 Cargar lista de estudiantes
+      </button>
     </div>
   </div>
 
-  <!-- ===== RESUMEN ===== -->
-  <div id="resumen-card">
-    <div class="res-header">
+  <!-- ═══ RESUMEN POST-GUARDADO ═══ -->
+  <div id="resumen-card" style="display:none" class="bg-white rounded-2xl shadow-sm overflow-hidden anim-fade">
+    <div class="bg-[#1a73e8] text-white px-5 py-3.5 font-bold text-sm flex items-center justify-between">
       <span>📊 Resumen de Asistencia</span>
-      <button class="btn-cerrar-res" onclick="document.getElementById('resumen-card').style.display='none'">✕ Cerrar</button>
+      <button onclick="document.getElementById('resumen-card').style.display='none'"
+        class="bg-white/20 border-0 text-white rounded-lg px-3 py-1 text-xs cursor-pointer">✕ Cerrar</button>
     </div>
-    <div class="res-body">
-      <div class="res-fecha" id="rc-fecha-txt"></div>
-      <div class="res-grid">
-        <div class="res-col">
-          <div class="res-col-title">Total</div>
-          <div class="res-num" id="rc-total">0</div>
-          <div class="res-breakdown">
-            <div class="res-bd-item"><span>♂ H</span><span class="res-bd-val" id="rc-totalH">0</span></div>
-            <div class="res-bd-item"><span>♀ M</span><span class="res-bd-val" id="rc-totalM">0</span></div>
+    <div class="p-4 sm:p-5">
+      <p class="text-xs text-gray-500 mb-4" id="rc-fecha-txt"></p>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-slate-50 rounded-xl p-3 text-center">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Total</p>
+          <p class="text-2xl font-extrabold text-[#1a73e8]" id="rc-total">0</p>
+          <div class="grid grid-cols-2 gap-1 mt-2">
+            <div class="bg-white rounded-lg px-1.5 py-1 flex justify-between text-[11px]"><span>♂ H</span><strong id="rc-totalH">0</strong></div>
+            <div class="bg-white rounded-lg px-1.5 py-1 flex justify-between text-[11px]"><span>♀ M</span><strong id="rc-totalM">0</strong></div>
           </div>
         </div>
-        <div class="res-col">
-          <div class="res-col-title">Presentes</div>
-          <div class="res-num verde" id="rc-presentes">0</div>
-          <div class="res-breakdown">
-            <div class="res-bd-item"><span>♂ H</span><span class="res-bd-val" id="rc-presentesH">0</span></div>
-            <div class="res-bd-item"><span>♀ M</span><span class="res-bd-val" id="rc-presentesM">0</span></div>
+        <div class="bg-slate-50 rounded-xl p-3 text-center">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Presentes</p>
+          <p class="text-2xl font-extrabold text-[#2e7d32]" id="rc-presentes">0</p>
+          <div class="grid grid-cols-2 gap-1 mt-2">
+            <div class="bg-white rounded-lg px-1.5 py-1 flex justify-between text-[11px]"><span>♂ H</span><strong id="rc-presentesH">0</strong></div>
+            <div class="bg-white rounded-lg px-1.5 py-1 flex justify-between text-[11px]"><span>♀ M</span><strong id="rc-presentesM">0</strong></div>
           </div>
         </div>
-        <div class="res-col">
-          <div class="res-col-title">Ausentes</div>
-          <div class="res-num rojo" id="rc-ausentes">0</div>
-          <div class="res-breakdown">
-            <div class="res-bd-item"><span>♂ H</span><span class="res-bd-val" id="rc-ausentesH">0</span></div>
-            <div class="res-bd-item"><span>♀ M</span><span class="res-bd-val" id="rc-ausentesM">0</span></div>
+        <div class="bg-slate-50 rounded-xl p-3 text-center">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Ausentes</p>
+          <p class="text-2xl font-extrabold text-[#c62828]" id="rc-ausentes">0</p>
+          <div class="grid grid-cols-2 gap-1 mt-2">
+            <div class="bg-white rounded-lg px-1.5 py-1 flex justify-between text-[11px]"><span>♂ H</span><strong id="rc-ausentesH">0</strong></div>
+            <div class="bg-white rounded-lg px-1.5 py-1 flex justify-between text-[11px]"><span>♀ M</span><strong id="rc-ausentesM">0</strong></div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ===== LISTA ===== -->
-  <div class="card" id="card-lista" style="display:none;">
-    <div class="card-header">
+  <!-- ═══ LISTA ═══ -->
+  <div class="bg-white rounded-2xl shadow-sm overflow-hidden" id="card-lista" style="display:none">
+    <div class="bg-[#1a73e8] text-white px-5 py-3.5 text-sm font-semibold">
       <span id="lista-titulo">Estudiantes</span>
     </div>
-    <div class="card-body">
+    <div class="p-4 sm:p-5">
 
-      <div id="alerta"></div>
+      <div id="alerta" style="display:none" class="px-4 py-3 rounded-xl text-sm font-medium mb-4 anim-fade"></div>
 
       <!-- Contadores -->
-      <div class="contadores">
-        <div class="cnt"><span class="dot dot-p"></span><span class="cnt-val" id="cnt-p">0</span> Puntuales</div>
-        <div class="cnt"><span class="dot dot-t"></span><span class="cnt-val" id="cnt-t">0</span> Tardíos</div>
-        <div class="cnt"><span class="dot dot-a"></span><span class="cnt-val" id="cnt-a">0</span> Ausentes</div>
-        <div class="cnt" style="margin-left:auto;">Total: <span class="cnt-val" id="cnt-total">0</span></div>
+      <div class="flex flex-wrap gap-2 mb-4">
+        <div class="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 text-xs font-semibold">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#2e7d32]"></span>
+          <span class="text-[#1a73e8] font-extrabold text-base" id="cnt-p">0</span> Puntuales
+        </div>
+        <div class="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 text-xs font-semibold">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#e65100]"></span>
+          <span class="text-[#1a73e8] font-extrabold text-base" id="cnt-t">0</span> Tardíos
+        </div>
+        <div class="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 text-xs font-semibold">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#c62828]"></span>
+          <span class="text-[#1a73e8] font-extrabold text-base" id="cnt-a">0</span> Ausentes
+        </div>
+        <div class="ml-auto flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 text-xs font-semibold">
+          Total: <span class="text-[#1a73e8] font-extrabold text-base" id="cnt-total">0</span>
+        </div>
       </div>
 
       <!-- Acciones rápidas -->
-      <div class="lista-toolbar">
-        <button class="btn btn-outline btn-sm" onclick="marcarTodos('Puntual')">✅ Todos presentes</button>
-        <button class="btn btn-outline btn-sm" onclick="marcarTodos('Tarde')">⚠ Todos tarde</button>
-        <button class="btn btn-outline btn-sm" onclick="marcarTodos('Ausente')">❌ Todos ausentes</button>
-        <div class="spacer"></div>
+      <div class="flex flex-wrap gap-2 pb-3 border-b border-slate-100 mb-4">
+        <button onclick="marcarTodos('Puntual')"
+          class="flex items-center gap-1.5 px-3 py-1.5 bg-white text-[#1a73e8] border-2 border-[#1a73e8] hover:bg-[#e8f0fe] rounded-xl text-xs font-bold cursor-pointer transition-colors">
+          ✅ Todos presentes
+        </button>
+        <button onclick="marcarTodos('Tarde')"
+          class="flex items-center gap-1.5 px-3 py-1.5 bg-white text-[#1a73e8] border-2 border-[#1a73e8] hover:bg-[#e8f0fe] rounded-xl text-xs font-bold cursor-pointer transition-colors">
+          ⚠ Todos tarde
+        </button>
+        <button onclick="marcarTodos('Ausente')"
+          class="flex items-center gap-1.5 px-3 py-1.5 bg-white text-[#1a73e8] border-2 border-[#1a73e8] hover:bg-[#e8f0fe] rounded-xl text-xs font-bold cursor-pointer transition-colors">
+          ❌ Todos ausentes
+        </button>
       </div>
 
       <div id="lista-body"><div class="spinner"></div></div>
 
-      <div style="margin-top:14px;">
-        <button class="btn btn-success" style="width:100%;justify-content:center;"
-          id="btn-guardar" onclick="guardarAsistencia()" disabled>
+      <div class="mt-4">
+        <button id="btn-guardar" onclick="guardarAsistencia()" disabled
+          class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#2e7d32] hover:bg-[#1b5e20] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold transition-colors cursor-pointer border-0">
           💾 Guardar asistencia
         </button>
       </div>
-
     </div>
   </div>
 
@@ -323,7 +199,7 @@
   let estudiantesActuales = [];
   let filtrosDisponibles  = { carreras: [], grados: [], secciones: [] };
 
-  // ---- NAVEGACIÓN ----
+  // ── Navegación ──
   let _webAppUrl = '';
   function nav(page) {
     const go = u => { window.top.location.href = u + (page ? '?page=' + page : ''); };
@@ -331,12 +207,11 @@
     else google.script.run.withSuccessHandler(u => { _webAppUrl = u; go(u); }).getWebAppUrl();
   }
 
-  // ---- INIT ----
+  // ── Init ──
   window.onload = () => {
     google.script.run.withSuccessHandler(u => { _webAppUrl = u; }).getWebAppUrl();
     const hoy = new Date().toISOString().split('T')[0];
     document.getElementById('f-fecha').value = hoy;
-
     google.script.run
       .withSuccessHandler(data => {
         filtrosDisponibles = data;
@@ -350,179 +225,141 @@
   function poblarSelect(id, valores) {
     const sel = document.getElementById(id);
     const actual = sel.value;
-    // Mantener opción "Todos"
     sel.innerHTML = '<option value="Todos">Todos</option>';
-    valores.forEach(v => {
-      const o = document.createElement('option');
-      o.value = o.textContent = v;
-      sel.appendChild(o);
-    });
+    valores.forEach(v => { const o = document.createElement('option'); o.value = o.textContent = v; sel.appendChild(o); });
     if (actual) sel.value = actual;
   }
 
-  // Sincroniza los filtros dependientes (opcional, para futuras mejoras)
-  function sincronizarFiltros() { /* espacio para filtros encadenados */ }
+  function sincronizarFiltros() {}
 
-  // ---- CARGAR LISTA ----
+  // ── Cargar lista ──
   function cargarLista() {
     const carrera = document.getElementById('f-carrera').value;
     const grado   = document.getElementById('f-grado').value;
     const seccion = document.getElementById('f-seccion').value;
     const fecha   = document.getElementById('f-fecha').value;
-    const materia = document.getElementById('f-materia').value.trim();
-
-    if (materia) {
-      // Guardar materia en el input para que se use al guardar
-    }
-
     document.getElementById('card-lista').style.display = '';
     document.getElementById('lista-body').innerHTML = '<div class="spinner"></div>';
     document.getElementById('btn-guardar').disabled = true;
-
-    // Construir título
-    const partes = [carrera !== 'Todos' ? carrera : null, grado !== 'Todos' ? 'Grado ' + grado : null, seccion !== 'Todos' ? 'Sección ' + seccion : null].filter(Boolean);
+    const partes = [carrera!=='Todos'?carrera:null, grado!=='Todos'?'Grado '+grado:null, seccion!=='Todos'?'Sección '+seccion:null].filter(Boolean);
     document.getElementById('lista-titulo').textContent =
       (partes.length ? partes.join(' · ') : 'Todos los estudiantes') + ' — ' + fecha;
-
     google.script.run
       .withSuccessHandler(data => {
         estudiantesActuales = data;
         renderLista(data);
         document.getElementById('btn-guardar').disabled = data.length === 0;
       })
-      .withFailureHandler(() => {
-        document.getElementById('lista-body').innerHTML = '<div class="empty-state">Error al cargar estudiantes</div>';
-      })
+      .withFailureHandler(() => { document.getElementById('lista-body').innerHTML = '<div class="text-center text-gray-400 py-10">Error al cargar estudiantes</div>'; })
       .obtenerEstudiantesPorGrupo(carrera, grado, seccion, fecha);
   }
 
-  // ---- RENDER ----
+  // ── Render ──
   function renderLista(data) {
     if (!data || data.length === 0) {
       document.getElementById('lista-body').innerHTML =
-        '<div class="empty-state">No se encontraron estudiantes con esos filtros.<br>Verifica que tengan Grado y Sección asignados.</div>';
-      actualizarContadores();
-      return;
+        '<div class="text-center text-gray-400 py-10 text-sm">No se encontraron estudiantes con esos filtros.<br>Verifica que tengan Grado y Sección asignados.</div>';
+      actualizarContadores(); return;
     }
-
     const html = data.map((e, idx) => {
       const estado = e.estadoHoy || 'Ausente';
-
-      return `
-        <div class="student-row" id="row-${idx}">
-          <div class="avatar ${estado.toLowerCase()}" id="av-${idx}">${e.nombre.charAt(0).toUpperCase()}</div>
-          <div class="stu-info">
-            <div class="stu-nombre">${e.nombre}</div>
-            <div class="stu-meta">${e.id} · ${[e.carrera, e.grado ? 'G'+e.grado : '', e.seccion ? 'Sec.'+e.seccion : ''].filter(Boolean).join(' · ')}</div>
-          </div>
-          <div class="estado-toggle">
-            <input type="radio" name="est-${idx}" id="p-${idx}" value="Puntual"
-              ${estado === 'Puntual' ? 'checked' : ''} onchange="onEstadoCambio(${idx})">
-            <label for="p-${idx}">✅ Puntual</label>
-
-            <input type="radio" name="est-${idx}" id="t-${idx}" value="Tarde"
-              ${estado === 'Tarde' ? 'checked' : ''} onchange="onEstadoCambio(${idx})">
-            <label for="t-${idx}">⚠ Tarde</label>
-
-            <input type="radio" name="est-${idx}" id="a-${idx}" value="Ausente"
-              ${estado === 'Ausente' ? 'checked' : ''} onchange="onEstadoCambio(${idx})">
-            <label for="a-${idx}">❌ Ausente</label>
-          </div>
+      return `<div class="student-row" id="row-${idx}"
+        style="display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:12px;padding:12px 8px;border-bottom:1px solid #f0f4f8;border-radius:8px;transition:background .15s;"
+        onmouseover="this.style.background='#f8f9ff'" onmouseout="this.style.background=''">
+        <div class="avatar ${estado.toLowerCase()}" id="av-${idx}">${e.nombre.charAt(0).toUpperCase()}</div>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:#1a1a1a;">${e.nombre}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px;">${e.id} · ${[e.carrera, e.grado?'G'+e.grado:'', e.seccion?'Sec.'+e.seccion:''].filter(Boolean).join(' · ')}</div>
         </div>
-      `;
+        <div class="estado-toggle" style="display:flex;border-radius:8px;overflow:hidden;border:2px solid #ddd;flex-shrink:0;">
+          <input type="radio" name="est-${idx}" id="p-${idx}" value="Puntual" ${estado==='Puntual'?'checked':''} onchange="onEstadoCambio(${idx})">
+          <label for="p-${idx}">✅ Puntual</label>
+          <input type="radio" name="est-${idx}" id="t-${idx}" value="Tarde"   ${estado==='Tarde'?'checked':''} onchange="onEstadoCambio(${idx})">
+          <label for="t-${idx}">⚠ Tarde</label>
+          <input type="radio" name="est-${idx}" id="a-${idx}" value="Ausente" ${estado==='Ausente'?'checked':''} onchange="onEstadoCambio(${idx})">
+          <label for="a-${idx}">❌ Ausente</label>
+        </div>
+      </div>`;
     }).join('');
-
-    document.getElementById('lista-body').innerHTML = `<div class="student-list">${html}</div>`;
+    document.getElementById('lista-body').innerHTML = `<div>${html}</div>`;
     actualizarContadores();
   }
 
-  // ---- CAMBIO DE ESTADO ----
   function onEstadoCambio(idx) {
-    const val  = document.querySelector(`input[name="est-${idx}"]:checked`).value;
-    const av   = document.getElementById('av-' + idx);
-    av.className = 'avatar ' + val.toLowerCase();
+    const val = document.querySelector(`input[name="est-${idx}"]:checked`).value;
+    document.getElementById('av-' + idx).className = 'avatar ' + val.toLowerCase();
     actualizarContadores();
   }
 
-  // ---- MARCAR TODOS ----
   function marcarTodos(estado) {
     estudiantesActuales.forEach((e, idx) => {
-      const radio = document.querySelector(`input[name="est-${idx}"][value="${estado}"]`);
-      if (radio) { radio.checked = true; onEstadoCambio(idx); }
+      const r = document.querySelector(`input[name="est-${idx}"][value="${estado}"]`);
+      if (r) { r.checked = true; onEstadoCambio(idx); }
     });
   }
 
-  // ---- CONTADORES ----
   function actualizarContadores() {
     let p = 0, t = 0, a = 0;
     estudiantesActuales.forEach((e, idx) => {
-      const radio = document.querySelector(`input[name="est-${idx}"]:checked`);
-      if (!radio) return;
-      if (radio.value === 'Puntual') p++;
-      else if (radio.value === 'Tarde') t++;
+      const r = document.querySelector(`input[name="est-${idx}"]:checked`);
+      if (!r) return;
+      if (r.value === 'Puntual') p++;
+      else if (r.value === 'Tarde') t++;
       else a++;
     });
-    document.getElementById('cnt-p').textContent = p;
-    document.getElementById('cnt-t').textContent = t;
-    document.getElementById('cnt-a').textContent = a;
+    document.getElementById('cnt-p').textContent     = p;
+    document.getElementById('cnt-t').textContent     = t;
+    document.getElementById('cnt-a').textContent     = a;
     document.getElementById('cnt-total').textContent = estudiantesActuales.length;
   }
 
-  // ---- GUARDAR ----
+  // ── Guardar ──
   function guardarAsistencia() {
     const registros = estudiantesActuales.map((e, idx) => {
-      const radio = document.querySelector(`input[name="est-${idx}"]:checked`);
-      return { id: e.id, observacion: radio ? radio.value : 'Ausente' };
+      const r = document.querySelector(`input[name="est-${idx}"]:checked`);
+      return { id: e.id, observacion: r ? r.value : 'Ausente' };
     });
-
     const materia = document.getElementById('f-materia').value.trim() || 'General';
     const fecha   = document.getElementById('f-fecha').value;
-
-    document.getElementById('btn-guardar').disabled = true;
-    document.getElementById('btn-guardar').textContent = '⏳ Guardando...';
-
+    const btn     = document.getElementById('btn-guardar');
+    btn.disabled = true; btn.textContent = '⏳ Guardando...';
     google.script.run
       .withSuccessHandler(res => {
         mostrarAlerta(res.mensaje, res.ok);
-        document.getElementById('btn-guardar').disabled = false;
-        document.getElementById('btn-guardar').textContent = '💾 Guardar asistencia';
-        if (res.ok) {
-          cargarLista();
-          if (res.resumen) mostrarResumen(res.resumen);
-        }
+        btn.disabled = false; btn.textContent = '💾 Guardar asistencia';
+        if (res.ok) { cargarLista(); if (res.resumen) mostrarResumen(res.resumen); }
       })
       .withFailureHandler(err => {
         mostrarAlerta('Error de conexión: ' + err.message, false);
-        document.getElementById('btn-guardar').disabled = false;
-        document.getElementById('btn-guardar').textContent = '💾 Guardar asistencia';
+        btn.disabled = false; btn.textContent = '💾 Guardar asistencia';
       })
       .registrarAsistenciaMasiva(registros, materia, fecha);
   }
 
-  // ---- RESUMEN ----
   function mostrarResumen(r) {
-    document.getElementById('rc-fecha-txt').textContent =
-      'Fecha: ' + r.fecha + (r.materia && r.materia !== 'General' ? '  ·  Materia: ' + r.materia : '');
-    document.getElementById('rc-total').textContent      = r.total;
-    document.getElementById('rc-totalH').textContent     = r.totalH;
-    document.getElementById('rc-totalM').textContent     = r.totalM;
-    document.getElementById('rc-presentes').textContent  = r.presentes;
-    document.getElementById('rc-presentesH').textContent = r.presentesH;
-    document.getElementById('rc-presentesM').textContent = r.presentesM;
-    document.getElementById('rc-ausentes').textContent   = r.ausentes;
-    document.getElementById('rc-ausentesH').textContent  = r.ausentesH;
-    document.getElementById('rc-ausentesM').textContent  = r.ausentesM;
+    document.getElementById('rc-fecha-txt').textContent    = 'Fecha: ' + r.fecha + (r.materia&&r.materia!=='General'?'  ·  Materia: '+r.materia:'');
+    document.getElementById('rc-total').textContent        = r.total;
+    document.getElementById('rc-totalH').textContent       = r.totalH;
+    document.getElementById('rc-totalM').textContent       = r.totalM;
+    document.getElementById('rc-presentes').textContent    = r.presentes;
+    document.getElementById('rc-presentesH').textContent   = r.presentesH;
+    document.getElementById('rc-presentesM').textContent   = r.presentesM;
+    document.getElementById('rc-ausentes').textContent     = r.ausentes;
+    document.getElementById('rc-ausentesH').textContent    = r.ausentesH;
+    document.getElementById('rc-ausentesM').textContent    = r.ausentesM;
     const card = document.getElementById('resumen-card');
     card.style.display = '';
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // ---- ALERTA ----
   function mostrarAlerta(msg, ok) {
     const el = document.getElementById('alerta');
-    el.textContent  = msg;
-    el.className    = ok ? 'ok' : 'error';
+    el.textContent = msg; el.className = ok ? 'ok' : 'error';
     el.style.display = 'block';
+    el.style.padding = '12px 16px';
+    el.style.borderRadius = '12px';
+    el.style.fontSize = '14px';
+    el.style.marginBottom = '16px';
     setTimeout(() => { el.style.display = 'none'; }, 5000);
   }
 </script>
