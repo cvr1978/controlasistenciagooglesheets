@@ -116,7 +116,7 @@
     <div class="p-4 sm:p-5">
 
       <!-- Pestañas -->
-      <div class="flex gap-0 border-b-2 border-[#e8f0fe] mb-4 overflow-x-auto">
+      <div class="flex gap-0 border-b-2 border-[#e8f0fe] mb-4">
         <button class="tab-btn active flex-shrink-0 px-4 sm:px-5 py-2.5 border-0 bg-transparent cursor-pointer text-xs sm:text-sm font-semibold text-gray-500 border-b-[3px] border-transparent -mb-0.5 transition-colors"
           onclick="cambiarTab('hoy',this)">Hoy</button>
         <button class="tab-btn flex-shrink-0 px-4 sm:px-5 py-2.5 border-0 bg-transparent cursor-pointer text-xs sm:text-sm font-semibold text-gray-500 border-b-[3px] border-transparent -mb-0.5 transition-colors"
@@ -234,11 +234,18 @@
     const hoy = new Date().toISOString().split('T')[0];
     document.getElementById('fi-inicio').value = hoy;
     document.getElementById('fi-fin').value    = hoy;
-    google.script.run.withSuccessHandler(renderResumenHoy).obtenerResumenHoy();
+    google.script.run
+      .withSuccessHandler(renderResumenHoy)
+      .withFailureHandler(err => {
+        document.getElementById('tabla-hoy').innerHTML =
+          '<div class="empty-state">Error al cargar datos: ' + (err && err.message ? err.message : err) + '</div>';
+      })
+      .obtenerResumenHoy();
   };
 
   // ── KPIs ──
   function renderResumenHoy(r) {
+    if (!r) { renderTablaHoy([]); return; }
     document.getElementById('kpi-fecha').textContent     = r.fecha;
     document.getElementById('kpi-presentes').textContent = r.presentes;
     document.getElementById('kpi-puntuales').textContent = r.puntuales;
