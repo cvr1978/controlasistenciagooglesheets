@@ -12,6 +12,7 @@
     .badge   { display:inline-block; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
     .badge-p { background:#d9ead3; color:#2e7d32; }
     .badge-t { background:#fff3e0; color:#e65100; }
+    .badge-a { background:#fce8e6; color:#c62828; }
     /* ── Student list items (JS-generated) ── */
     .stu-list-item { display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;transition:background .15s;border:1px solid transparent; }
     .stu-list-item:hover { background:#e8f0fe; border-color:#c5d9f5; }
@@ -79,7 +80,7 @@
   <div id="kpi-row" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
     <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-5 text-center">
       <div class="text-3xl mb-1">📅</div>
-      <div class="text-lg sm:text-2xl font-extrabold text-[#1a73e8] leading-tight" id="kpi-fecha">--</div>
+      <div class="text-base sm:text-xl font-extrabold text-[#1a73e8] leading-tight whitespace-nowrap" id="kpi-fecha">--</div>
       <div class="text-xs text-gray-500 mt-1">Fecha de hoy</div>
     </div>
     <div class="bg-white rounded-2xl shadow-sm p-4 sm:p-5 text-center">
@@ -250,16 +251,53 @@
     document.getElementById('kpi-presentes').textContent = r.presentes;
     document.getElementById('kpi-puntuales').textContent = r.puntuales;
     document.getElementById('kpi-tarde').textContent     = r.tarde;
-    document.getElementById('kpi-ausentes').textContent  = Math.max(0, r.total - r.presentes);
+    document.getElementById('kpi-ausentes').textContent  = r.ausentes;
     datosHoy = r.registros;
     renderTablaHoy(r.registros);
   }
 
   // ── Tabla HOY ──
+  let _filtroHoy = 'todos';
+
+  function filtrarTablaHoy(modo) {
+    _filtroHoy = modo;
+    ['todos','presentes','ausentes'].forEach(m => {
+      const btn = document.getElementById('fhoy-' + m);
+      if (btn) btn.className = btn.className.replace(/bg-\[#1a73e8\] text-white/g, 'bg-white text-gray-600 border border-gray-200').replace(/bg-white text-gray-600 border border-gray-200/g, 'bg-white text-gray-600 border border-gray-200');
+    });
+    const activo = document.getElementById('fhoy-' + modo);
+    if (activo) {
+      activo.className = activo.className.replace('bg-white text-gray-600 border border-gray-200', 'bg-[#1a73e8] text-white');
+    }
+    const filtrados = modo === 'presentes' ? datosHoy.filter(r => r.obs !== 'Ausente')
+                    : modo === 'ausentes'  ? datosHoy.filter(r => r.obs === 'Ausente')
+                    : datosHoy;
+    _renderFilaHoy(filtrados);
+  }
+
   function renderTablaHoy(registros) {
     const cont = document.getElementById('tabla-hoy');
     if (!registros || registros.length === 0) {
-      cont.innerHTML = '<div class="empty-state">Sin registros para hoy</div>'; return;
+      cont.innerHTML = '<div class="empty-state">Sin estudiantes registrados</div>'; return;
+    }
+    const pres = registros.filter(r => r.obs !== 'Ausente').length;
+    const ause = registros.filter(r => r.obs === 'Ausente').length;
+    cont.innerHTML = `
+      <div class="flex flex-wrap gap-2 mb-3">
+        <button id="fhoy-todos"     onclick="filtrarTablaHoy('todos')"     class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer border-0 bg-[#1a73e8] text-white transition-colors">Todos (${registros.length})</button>
+        <button id="fhoy-presentes" onclick="filtrarTablaHoy('presentes')" class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer bg-white text-gray-600 border border-gray-200 transition-colors">✅ Presentes (${pres})</button>
+        <button id="fhoy-ausentes"  onclick="filtrarTablaHoy('ausentes')"  class="px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer bg-white text-gray-600 border border-gray-200 transition-colors">❌ Ausentes (${ause})</button>
+      </div>
+      <div id="tabla-hoy-rows"></div>`;
+    _filtroHoy = 'todos';
+    _renderFilaHoy(registros);
+  }
+
+  function _renderFilaHoy(registros) {
+    const cont = document.getElementById('tabla-hoy-rows');
+    if (!cont) return;
+    if (!registros || registros.length === 0) {
+      cont.innerHTML = '<div class="empty-state">Sin registros en esta categoría</div>'; return;
     }
     cont.innerHTML = `<div class="overflow-x-auto">
       <table class="w-full border-collapse text-sm">
@@ -268,16 +306,21 @@
             `<th class="bg-[#e8f0fe] text-[#1a73e8] px-3 py-2.5 text-left font-bold text-xs whitespace-nowrap">${h}</th>`).join('')}</tr>
         </thead>
         <tbody>
-          ${registros.map(r => `<tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-            <td class="px-3 py-2.5 text-xs">${r.hora}</td>
-            <td class="px-3 py-2.5 text-xs">${r.id}</td>
-            <td class="px-3 py-2.5 text-xs font-semibold">${r.nombre}</td>
-            <td class="px-3 py-2.5 text-xs">${r.programa}</td>
-            <td class="px-3 py-2.5 text-xs">${r.materia}</td>
-            <td class="px-3 py-2.5 text-xs"><span class="badge ${r.obs==='Puntual'?'badge-p':'badge-t'}">${r.obs}</span></td>
-          </tr>`).join('')}
+          ${registros.map(r => {
+            const badgeCls = r.obs === 'Puntual' ? 'badge-p' : r.obs === 'Tarde' ? 'badge-t' : 'badge-a';
+            const rowBg    = r.obs === 'Ausente' ? 'bg-red-50' : '';
+            return `<tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors ${rowBg}">
+              <td class="px-3 py-2.5 text-xs">${r.hora}</td>
+              <td class="px-3 py-2.5 text-xs">${r.id}</td>
+              <td class="px-3 py-2.5 text-xs font-semibold">${r.nombre}</td>
+              <td class="px-3 py-2.5 text-xs">${r.programa}</td>
+              <td class="px-3 py-2.5 text-xs">${r.materia}</td>
+              <td class="px-3 py-2.5 text-xs"><span class="badge ${badgeCls}">${r.obs}</span></td>
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
+      <p class="text-xs text-gray-400 mt-2">Mostrando ${registros.length} estudiantes</p>
     </div>`;
   }
 
