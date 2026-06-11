@@ -2,6 +2,9 @@
 // SISTEMA DE CONTROL DE ASISTENCIA CON QR - Google Apps Script
 // ============================================================
 
+// Zona horaria fija para Guatemala (UTC-6, sin horario de verano)
+const TZ = 'America/Guatemala';
+
 // Nombres de las hojas del spreadsheet
 const SHEET_ESTUDIANTES  = 'Estudiantes';
 const SHEET_ASISTENCIA   = 'Asistencia';
@@ -157,7 +160,7 @@ function registrarAsistencia(codigoQr) {
     }
 
     const ahora  = new Date();
-    const hoyStr = Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    const hoyStr = Utilities.formatDate(ahora, TZ, 'yyyy-MM-dd');
 
     if (_yaRegistroHoy(sheetA, codigoLimpio, hoyStr)) {
       return { ok: false, mensaje: `${est.nombre} ya tiene asistencia registrada hoy.`, estudiante: est };
@@ -168,8 +171,8 @@ function registrarAsistencia(codigoQr) {
     const horaActual = ahora.getHours() * 60 + ahora.getMinutes();
     const obs        = horaActual <= horaClase + tolerancia ? 'Puntual' : 'Tarde';
 
-    const fecha   = Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    const hora    = Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'HH:mm:ss');
+    const fecha   = Utilities.formatDate(ahora, TZ, 'yyyy-MM-dd');
+    const hora    = Utilities.formatDate(ahora, TZ, 'HH:mm:ss');
     const materia = config['Materia'] || 'General';
 
     _appendAsistencia(sheetA, fecha, hora, est, materia, obs);
@@ -230,8 +233,7 @@ function obtenerEstudiantesPorGrupo(carrera, grado, seccion, fecha) {
 
   if (!sheetE || sheetE.getLastRow() < 2) return [];
 
-  const fechaBuscar = fecha || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  const tz          = Session.getScriptTimeZone();
+  const fechaBuscar = fecha || Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
 
   // Índice de asistencia del día: id -> observacion
   const asistHoy = {};
@@ -294,7 +296,7 @@ function registrarAsistenciaMasiva(registros, materia, fecha) {
       return { ok: false, mensaje: 'El spreadsheet no está inicializado.' };
     }
 
-    const tz         = Session.getScriptTimeZone();
+    const tz         = TZ;
     const fechaUso   = fecha || Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
     const horaUso    = Utilities.formatDate(new Date(), tz, 'HH:mm:ss');
     const materiaUso = materia || obtenerConfiguracion()['Materia'] || 'General';
@@ -517,7 +519,7 @@ function obtenerResumenHoy() {
   const sheetA = ss.getSheetByName(SHEET_ASISTENCIA);
   const sheetE = ss.getSheetByName(SHEET_ESTUDIANTES);
 
-  const hoyStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const hoyStr = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
 
   // Índice de asistencia de hoy: id -> { hora, materia, obs }
   const asistHoy = {};
@@ -644,7 +646,6 @@ function obtenerAsistenciaPorFecha(fechaInicio, fechaFin) {
   const sheetA = ss.getSheetByName(SHEET_ASISTENCIA);
   if (!sheetA || sheetA.getLastRow() < 2) return [];
 
-  const tz = Session.getScriptTimeZone();
   const resultado = [];
 
   sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(r => {
@@ -715,7 +716,7 @@ function guardarConfiguracion(datos) {
 function _toDateStr(f) {
   if (!f) return '';
   if (f instanceof Date) {
-    return Utilities.formatDate(f, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    return Utilities.formatDate(f, TZ, 'yyyy-MM-dd');
   }
   // Es string — tomar solo los primeros 10 caracteres ("2026-03-25")
   return f.toString().substring(0, 10);
@@ -743,7 +744,6 @@ function _buscarEstudiante(sheet, id) {
 
 function _yaRegistroHoy(sheet, id, hoyStr) {
   if (!sheet || sheet.getLastRow() < 2) return false;
-  const tz    = Session.getScriptTimeZone();
   const datos = sheet.getRange(2, 1, sheet.getLastRow() - 1, NUM_COLS_ASIST).getValues();
   for (let i = 0; i < datos.length; i++) {
     const f = datos[i][COL_ASIST_FECHA - 1];

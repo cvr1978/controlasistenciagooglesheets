@@ -196,6 +196,11 @@
 </div>
 
 <script>
+  // Devuelve 'YYYY-MM-DD' en hora de Guatemala (UTC-6), no en UTC
+  function fechaGuatemala() {
+    return new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Guatemala' });
+  }
+
   let estudiantesActuales = [];
   let filtrosDisponibles  = { carreras: [], grados: [], secciones: [] };
 
@@ -210,7 +215,7 @@
   // ── Init ──
   window.onload = () => {
     google.script.run.withSuccessHandler(u => { _webAppUrl = u; }).getWebAppUrl();
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = fechaGuatemala();
     document.getElementById('f-fecha').value = hoy;
     google.script.run
       .withSuccessHandler(data => {

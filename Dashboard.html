@@ -217,6 +217,11 @@
 </div>
 
 <script>
+  // Devuelve 'YYYY-MM-DD' en hora de Guatemala (UTC-6), no en UTC
+  function fechaGuatemala() {
+    return new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Guatemala' });
+  }
+
   let datosHoy     = [];
   let datosPeriodo = [];
   let tabActiva    = 'hoy';
@@ -232,7 +237,7 @@
   // ── Init ──
   window.onload = () => {
     google.script.run.withSuccessHandler(u => { _webAppUrl = u; }).getWebAppUrl();
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = fechaGuatemala();
     document.getElementById('fi-inicio').value = hoy;
     document.getElementById('fi-fin').value    = hoy;
     google.script.run
@@ -536,8 +541,8 @@
     const datos = tabActiva === 'periodo' ? datosPeriodo : datosHoy;
     if (!datos || datos.length === 0) { alert('No hay datos para exportar.'); return; }
     const cab   = ['Fecha','Hora','ID','Nombre','Programa','Materia','Estado'];
-    const filas = datos.map(r => [r.fecha||new Date().toISOString().split('T')[0], r.hora, r.id, r.nombre, r.programa, r.materia, r.obs]);
-    _descargarCSV([cab,...filas], `asistencia_${new Date().toISOString().split('T')[0]}.csv`);
+    const filas = datos.map(r => [r.fecha||fechaGuatemala(), r.hora, r.id, r.nombre, r.programa, r.materia, r.obs]);
+    _descargarCSV([cab,...filas], `asistencia_${fechaGuatemala()}.csv`);
   }
 
   function _descargarCSV(filas, nombre) {
