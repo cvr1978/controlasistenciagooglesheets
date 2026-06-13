@@ -251,7 +251,14 @@
 
   // ── KPIs ──
   function renderResumenHoy(r) {
-    if (!r) { renderTablaHoy([]); return; }
+    if (!r) {
+      document.getElementById('tabla-hoy').innerHTML = '<div class="empty-state">❌ Error: el servidor no devolvió datos. Verifica el despliegue de la Web App.</div>';
+      return;
+    }
+    if (!r.ok) {
+      document.getElementById('tabla-hoy').innerHTML = '<div class="empty-state">❌ Error del servidor: ' + (r.errmsg || 'desconocido') + '</div>';
+      return;
+    }
     document.getElementById('kpi-fecha').textContent     = r.fecha;
     document.getElementById('kpi-presentes').textContent = r.presentes;
     document.getElementById('kpi-puntuales').textContent = r.puntuales;

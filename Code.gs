@@ -515,66 +515,73 @@ function eliminarEstudiante(id) {
 // ------------------------------------------------------------
 
 function obtenerResumenHoy() {
-  const ss     = SpreadsheetApp.getActiveSpreadsheet();
-  const sheetA = ss.getSheetByName(SHEET_ASISTENCIA);
-  const sheetE = ss.getSheetByName(SHEET_ESTUDIANTES);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) return { ok: false, errmsg: 'Spreadsheet no disponible' };
 
-  const hoyStr = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+    const sheetA = ss.getSheetByName(SHEET_ASISTENCIA);
+    const sheetE = ss.getSheetByName(SHEET_ESTUDIANTES);
+    const hoyStr = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
 
-  // Índice de asistencia de hoy: id -> { hora, materia, obs }
-  const asistHoy = {};
-  if (sheetA && sheetA.getLastRow() > 1) {
-    sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(r => {
-      const f = r[COL_ASIST_FECHA - 1];
-      if (!f) return;
-      if (_toDateStr(f) === hoyStr) {
-        asistHoy[r[COL_ASIST_ID - 1].toString().trim()] = {
-          hora:    r[COL_ASIST_HORA    - 1],
-          materia: r[COL_ASIST_MATERIA - 1],
-          obs:     r[COL_ASIST_OBS     - 1].toString()
+    // Índice de asistencia de hoy — hora se convierte a string para evitar
+    // fallos de serialización en google.script.run con objetos Date anidados
+    const asistHoy = {};
+    if (sheetA && sheetA.getLastRow() > 1) {
+      sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(row => {
+        const f = row[COL_ASIST_FECHA - 1];
+        if (!f) return;
+        if (_toDateStr(f) !== hoyStr) return;
+        const h = row[COL_ASIST_HORA - 1];
+        asistHoy[row[COL_ASIST_ID - 1].toString().trim()] = {
+          hora:    h instanceof Date ? Utilities.formatDate(h, TZ, 'HH:mm') : String(h || ''),
+          materia: String(row[COL_ASIST_MATERIA - 1] || ''),
+          obs:     String(row[COL_ASIST_OBS     - 1] || '')
         };
-      }
-    });
-  }
-
-  // Combinar todos los estudiantes activos con su asistencia de hoy
-  const registros = [];
-  if (sheetE && sheetE.getLastRow() > 1) {
-    sheetE.getRange(2, 1, sheetE.getLastRow() - 1, 8).getValues().forEach(r => {
-      if (!r[0]) return;
-      if ((r[COL_EST_ESTADO - 1] || '').toString().toLowerCase() === 'inactivo') return;
-      const id  = r[COL_EST_ID - 1].toString().trim();
-      const att = asistHoy[id];
-      registros.push({
-        hora:     att ? att.hora    : '—',
-        id:       id,
-        nombre:   r[COL_EST_NOMBRE   - 1],
-        programa: r[COL_EST_PROGRAMA - 1],
-        grado:    r[COL_EST_GRADO    - 1],
-        seccion:  r[COL_EST_SECCION  - 1],
-        materia:  att ? att.materia : '—',
-        obs:      att ? att.obs     : 'Ausente'
       });
+    }
+
+    // Combinar todos los estudiantes activos con su asistencia de hoy
+    const registros = [];
+    if (sheetE && sheetE.getLastRow() > 1) {
+      sheetE.getRange(2, 1, sheetE.getLastRow() - 1, 8).getValues().forEach(row => {
+        if (!row[0]) return;
+        if ((row[COL_EST_ESTADO - 1] || '').toString().toLowerCase() === 'inactivo') return;
+        const id  = row[COL_EST_ID - 1].toString().trim();
+        const att = asistHoy[id];
+        registros.push({
+          hora:     att ? att.hora    : '',
+          id:       id,
+          nombre:   String(row[COL_EST_NOMBRE   - 1] || ''),
+          programa: String(row[COL_EST_PROGRAMA - 1] || ''),
+          grado:    String(row[COL_EST_GRADO    - 1] || ''),
+          seccion:  String(row[COL_EST_SECCION  - 1] || ''),
+          materia:  att ? att.materia : '',
+          obs:      att ? att.obs     : 'Ausente'
+        });
+      });
+    }
+
+    // Presentes primero (Puntual, Tarde), luego Ausentes
+    registros.sort((a, b) => {
+      const ord = { 'Puntual': 0, 'Tarde': 1, 'Ausente': 2 };
+      return (ord[a.obs] !== undefined ? ord[a.obs] : 2) - (ord[b.obs] !== undefined ? ord[b.obs] : 2);
     });
+
+    const presentes = registros.filter(r => r.obs !== 'Ausente').length;
+    const puntuales = registros.filter(r => r.obs === 'Puntual').length;
+    const tarde     = registros.filter(r => r.obs === 'Tarde').length;
+    const ausentes  = registros.filter(r => r.obs === 'Ausente').length;
+
+    return {
+      ok: true,
+      fecha: hoyStr,
+      presentes, puntuales, tarde, ausentes,
+      total: registros.length,
+      registros
+    };
+  } catch (err) {
+    return { ok: false, errmsg: err.message };
   }
-
-  // Presentes primero (Puntual, Tarde), luego Ausentes
-  registros.sort((a, b) => {
-    const ord = { 'Puntual': 0, 'Tarde': 1, 'Ausente': 2 };
-    return (ord[a.obs] !== undefined ? ord[a.obs] : 2) - (ord[b.obs] !== undefined ? ord[b.obs] : 2);
-  });
-
-  const presentes = registros.filter(r => r.obs !== 'Ausente').length;
-  const puntuales = registros.filter(r => r.obs === 'Puntual').length;
-  const tarde     = registros.filter(r => r.obs === 'Tarde').length;
-  const ausentes  = registros.filter(r => r.obs === 'Ausente').length;
-
-  return {
-    fecha:     hoyStr,
-    presentes, puntuales, tarde, ausentes,
-    total:     registros.length,
-    registros
-  };
 }
 
 /**
@@ -604,7 +611,7 @@ function obtenerEstadisticasEstudiante(id) {
 
         registros.push({
           fecha:   fStr,
-          hora:    hora ? hora.toString().substring(0, 5) : '',
+          hora:    hora instanceof Date ? Utilities.formatDate(hora, TZ, 'HH:mm') : String(hora || '').substring(0, 5),
           materia: r[COL_ASIST_MATERIA - 1].toString(),
           grado:   r[COL_ASIST_GRADO   - 1].toString(),
           seccion: r[COL_ASIST_SECCION - 1].toString(),
@@ -648,21 +655,22 @@ function obtenerAsistenciaPorFecha(fechaInicio, fechaFin) {
 
   const resultado = [];
 
-  sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(r => {
-    const f = r[COL_ASIST_FECHA - 1];
+  sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(row => {
+    const f = row[COL_ASIST_FECHA - 1];
     if (!f) return;
     const fStr = _toDateStr(f);
     if (fStr >= fechaInicio && fStr <= fechaFin) {
+      const h = row[COL_ASIST_HORA - 1];
       resultado.push({
         fecha:    fStr,
-        hora:     r[COL_ASIST_HORA     - 1],
-        id:       r[COL_ASIST_ID       - 1],
-        nombre:   r[COL_ASIST_NOMBRE   - 1],
-        programa: r[COL_ASIST_PROGRAMA - 1],
-        grado:    r[COL_ASIST_GRADO    - 1],
-        seccion:  r[COL_ASIST_SECCION  - 1],
-        materia:  r[COL_ASIST_MATERIA  - 1],
-        obs:      r[COL_ASIST_OBS      - 1]
+        hora:     h instanceof Date ? Utilities.formatDate(h, TZ, 'HH:mm') : String(h || ''),
+        id:       String(row[COL_ASIST_ID       - 1] || ''),
+        nombre:   String(row[COL_ASIST_NOMBRE   - 1] || ''),
+        programa: String(row[COL_ASIST_PROGRAMA - 1] || ''),
+        grado:    String(row[COL_ASIST_GRADO    - 1] || ''),
+        seccion:  String(row[COL_ASIST_SECCION  - 1] || ''),
+        materia:  String(row[COL_ASIST_MATERIA  - 1] || ''),
+        obs:      String(row[COL_ASIST_OBS      - 1] || '')
       });
     }
   });
