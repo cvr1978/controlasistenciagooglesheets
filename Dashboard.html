@@ -394,13 +394,17 @@
   }
 
   function filtrarEstudiantes() {
-    const q = document.getElementById('stu-buscar').value.toLowerCase();
+    const q = document.getElementById('stu-buscar').value.trim().toLowerCase();
+    // String(...) en cada campo: grado/sección/id llegan como números desde
+    // la hoja de cálculo y los números no tienen .toLowerCase()
+    const txt = v => String(v == null ? '' : v).toLowerCase();
     renderListaEstudiantes(
-      todosEstudiantes.filter(e =>
-        e.nombre.toLowerCase().includes(q) ||
-        String(e.id).toLowerCase().includes(q) ||
-        (e.programa || '').toLowerCase().includes(q) ||
-        (e.grado || '').toLowerCase().includes(q)
+      !q ? todosEstudiantes : todosEstudiantes.filter(e =>
+        txt(e.nombre).includes(q)   ||
+        txt(e.id).includes(q)       ||
+        txt(e.programa).includes(q) ||
+        txt(e.grado).includes(q)    ||
+        txt(e.seccion).includes(q)
       )
     );
   }
@@ -409,7 +413,7 @@
     const cont = document.getElementById('stu-lista-body');
     if (!lista.length) { cont.innerHTML = '<div class="empty-state">No se encontraron estudiantes</div>'; return; }
     cont.innerHTML = lista.map(e => {
-      const ini  = e.nombre.charAt(0).toUpperCase();
+      const ini  = String(e.nombre || '?').charAt(0).toUpperCase();
       const meta = [e.programa, e.grado?'Grado '+e.grado:'', e.seccion?'Sec. '+e.seccion:'', e.sexo||''].filter(Boolean).join(' · ');
       return `<div class="stu-list-item" onclick="abrirEstudiante('${escapar(String(e.id))}')">
         <div class="stu-avatar">${ini}</div>

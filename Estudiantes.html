@@ -226,13 +226,16 @@
   function escapar(s) { return String(s).replace(/'/g, "\\'"); }
 
   function filtrarTabla() {
-    const q = document.getElementById('busqueda').value.toLowerCase();
-    renderTabla(estudiantes.filter(e =>
-      e.nombre.toLowerCase().includes(q) ||
-      String(e.id).toLowerCase().includes(q) ||
-      (e.programa||'').toLowerCase().includes(q) ||
-      (e.grado||'').toLowerCase().includes(q) ||
-      (e.seccion||'').toLowerCase().includes(q)
+    const q = document.getElementById('busqueda').value.trim().toLowerCase();
+    // String(...) en cada campo: grado/sección/id llegan como números desde
+    // la hoja de cálculo y los números no tienen .toLowerCase()
+    const txt = v => String(v == null ? '' : v).toLowerCase();
+    renderTabla(!q ? estudiantes : estudiantes.filter(e =>
+      txt(e.nombre).includes(q)   ||
+      txt(e.id).includes(q)       ||
+      txt(e.programa).includes(q) ||
+      txt(e.grado).includes(q)    ||
+      txt(e.seccion).includes(q)
     ));
   }
 
