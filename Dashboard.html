@@ -235,18 +235,22 @@
   }
 
   // ── Init ──
+  // Una sola llamada al servidor (initDashboard) en lugar de dos:
+  // cada ida y vuelta de google.script.run cuesta 1-2 segundos.
   window.onload = () => {
-    google.script.run.withSuccessHandler(u => { _webAppUrl = u; }).getWebAppUrl();
     const hoy = fechaGuatemala();
     document.getElementById('fi-inicio').value = hoy;
     document.getElementById('fi-fin').value    = hoy;
     google.script.run
-      .withSuccessHandler(renderResumenHoy)
+      .withSuccessHandler(d => {
+        _webAppUrl = (d && d.url) || '';
+        renderResumenHoy(d && d.resumen);
+      })
       .withFailureHandler(err => {
         document.getElementById('tabla-hoy').innerHTML =
           '<div class="empty-state">Error al cargar datos: ' + (err && err.message ? err.message : err) + '</div>';
       })
-      .obtenerResumenHoy();
+      .initDashboard();
   };
 
   // ── KPIs ──

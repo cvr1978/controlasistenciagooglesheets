@@ -77,6 +77,18 @@ function getWebAppUrl() {
   return ScriptApp.getService().getUrl();
 }
 
+/**
+ * Carga inicial del Dashboard en UNA sola llamada: URL de la app + resumen
+ * de hoy. Cada google.script.run cuesta 1-2s de ida y vuelta, así que
+ * combinar ambas peticiones reduce el tiempo de arranque a la mitad.
+ */
+function initDashboard() {
+  return {
+    url:     ScriptApp.getService().getUrl(),
+    resumen: obtenerResumenHoy()
+  };
+}
+
 // ------------------------------------------------------------
 // INICIALIZACIÓN DEL SPREADSHEET
 // ------------------------------------------------------------
@@ -176,6 +188,7 @@ function registrarAsistencia(codigoQr) {
     const materia = config['Materia'] || 'General';
 
     _appendAsistencia(sheetA, fecha, hora, est, materia, obs);
+    _invalidarCacheResumen();
 
     return {
       ok: true,
@@ -398,6 +411,7 @@ function registrarAsistenciaMasiva(registros, materia, fecha) {
 
     // Escribir resumen por grado en la hoja Resumen
     _escribirResumenHoja(ss, fechaUso, horaUso, materiaUso, grupoResumen);
+    _invalidarCacheResumen();
 
     return {
       ok: true,
@@ -429,11 +443,15 @@ function registrarAsistenciaMasiva(registros, materia, fecha) {
 // ------------------------------------------------------------
 
 function obtenerEstudiantes() {
+  const cache = CacheService.getScriptCache();
+  const hit = cache.get('estudiantes_v1');
+  if (hit) return JSON.parse(hit);
+
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_ESTUDIANTES);
   if (!sheet || sheet.getLastRow() < 2) return [];
 
-  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues()
+  const lista = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues()
     .filter(r => r[0] !== '')
     .map(r => ({
       id:       r[COL_EST_ID       - 1],
@@ -445,6 +463,9 @@ function obtenerEstudiantes() {
       seccion:  r[COL_EST_SECCION  - 1],
       sexo:     r[COL_EST_SEXO     - 1]
     }));
+
+  try { cache.put('estudiantes_v1', JSON.stringify(lista), 300); } catch (e) {}
+  return lista;
 }
 
 function agregarEstudiante(datos) {
@@ -464,6 +485,7 @@ function agregarEstudiante(datos) {
       datos.email || '', datos.estado || 'Activo',
       datos.grado || '', datos.seccion || '', datos.sexo || ''
     ]);
+    _invalidarCacheResumen();
     return { ok: true, mensaje: `Estudiante ${datos.nombre} agregado correctamente.` };
   } catch (err) {
     return { ok: false, mensaje: 'Error: ' + err.message };
@@ -483,6 +505,7 @@ function actualizarEstudiante(idOriginal, datos) {
           datos.email || '', datos.estado || 'Activo',
           datos.grado || '', datos.seccion || '', datos.sexo || ''
         ]]);
+        _invalidarCacheResumen();
         return { ok: true, mensaje: 'Estudiante actualizado.' };
       }
     }
@@ -501,6 +524,7 @@ function eliminarEstudiante(id) {
     for (let i = filas.length - 1; i >= 1; i--) {
       if (filas[i][0].toString().trim() === id.toString().trim()) {
         sheet.deleteRow(i + 1);
+        _invalidarCacheResumen();
         return { ok: true, mensaje: 'Estudiante eliminado.' };
       }
     }
@@ -516,12 +540,20 @@ function eliminarEstudiante(id) {
 
 function obtenerResumenHoy() {
   try {
+    const hoyStr = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+
+    // Caché de 60s: evita releer y reprocesar toda la hoja en cada apertura.
+    // La clave incluye la fecha para que nunca se sirva el resumen de ayer.
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'resumenHoy_' + hoyStr;
+    const hit = cache.get(cacheKey);
+    if (hit) return JSON.parse(hit);
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     if (!ss) return { ok: false, errmsg: 'Spreadsheet no disponible' };
 
     const sheetA = ss.getSheetByName(SHEET_ASISTENCIA);
     const sheetE = ss.getSheetByName(SHEET_ESTUDIANTES);
-    const hoyStr = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
 
     // Índice de asistencia de hoy — hora se convierte a string para evitar
     // fallos de serialización en google.script.run con objetos Date anidados
@@ -567,21 +599,44 @@ function obtenerResumenHoy() {
       return (ord[a.obs] !== undefined ? ord[a.obs] : 2) - (ord[b.obs] !== undefined ? ord[b.obs] : 2);
     });
 
-    const presentes = registros.filter(r => r.obs !== 'Ausente').length;
-    const puntuales = registros.filter(r => r.obs === 'Puntual').length;
-    const tarde     = registros.filter(r => r.obs === 'Tarde').length;
-    const ausentes  = registros.filter(r => r.obs === 'Ausente').length;
+    // Conteo en una sola pasada
+    let puntuales = 0, tarde = 0, ausentes = 0;
+    registros.forEach(r => {
+      if      (r.obs === 'Puntual') puntuales++;
+      else if (r.obs === 'Tarde')   tarde++;
+      else                          ausentes++;
+    });
 
-    return {
+    const out = {
       ok: true,
       fecha: hoyStr,
-      presentes, puntuales, tarde, ausentes,
+      presentes: puntuales + tarde,
+      puntuales, tarde, ausentes,
       total: registros.length,
       registros
     };
+
+    // put falla si el payload supera 100KB — en ese caso solo se omite el caché
+    try { cache.put(cacheKey, JSON.stringify(out), 60); } catch (e) {}
+
+    return out;
   } catch (err) {
     return { ok: false, errmsg: err.message };
   }
+}
+
+/**
+ * Invalida el caché del resumen de hoy. Llamar tras cualquier escritura
+ * de asistencia o cambio de estudiantes para que el dashboard refleje
+ * los datos nuevos de inmediato.
+ */
+function _invalidarCacheResumen() {
+  try {
+    const hoyStr = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+    const cache  = CacheService.getScriptCache();
+    cache.remove('resumenHoy_' + hoyStr);
+    cache.remove('estudiantes_v1');
+  } catch (e) {}
 }
 
 /**
@@ -721,10 +776,17 @@ function guardarConfiguracion(datos) {
  * usando el timezone del script.
  * Evita el bug de new Date("2026-03-25") que parsea como UTC y da el día anterior.
  */
+// Memo por ejecución: Utilities.formatDate es lento (~1ms por llamada) y la
+// mayoría de filas comparten la misma fecha, así que se formatea una sola vez.
+const _dateStrCache = {};
 function _toDateStr(f) {
   if (!f) return '';
   if (f instanceof Date) {
-    return Utilities.formatDate(f, TZ, 'yyyy-MM-dd');
+    const k = f.getTime();
+    if (_dateStrCache[k] === undefined) {
+      _dateStrCache[k] = Utilities.formatDate(f, TZ, 'yyyy-MM-dd');
+    }
+    return _dateStrCache[k];
   }
   // Es string — tomar solo los primeros 10 caracteres ("2026-03-25")
   return f.toString().substring(0, 10);
