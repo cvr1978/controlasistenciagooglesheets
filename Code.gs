@@ -642,10 +642,9 @@ function _invalidarCacheResumen() {
 /**
  * Devuelve estadísticas completas de asistencia para un estudiante específico.
  *
- * Las ausencias se calculan con el MISMO criterio que el informe por grupo:
- * un día cuenta como ausencia si el grupo del estudiante (misma carrera,
- * grado y sección) tuvo clase ese día y el estudiante no tiene registro de
- * Puntual/Tarde — aunque nadie lo haya marcado 'Ausente' explícitamente.
+ * Criterio de ausencias: SOLO cuentan las filas marcadas 'Ausente'
+ * explícitamente en la hoja Asistencia (mismo criterio que el informe
+ * por grupo). Los días sin registro no cuentan.
  */
 function obtenerEstadisticasEstudiante(id) {
   try {
@@ -657,72 +656,43 @@ function obtenerEstadisticasEstudiante(id) {
     const est = _buscarEstudiante(sheetE, idStr);
     if (!est) return null;
 
-    // IDs de los compañeros del mismo grupo (carrera + grado + sección)
-    const gCarrera = String(est.programa || '').trim();
-    const gGrado   = String(est.grado    || '').trim();
-    const gSeccion = String(est.seccion  || '').trim();
-    const grupoIds = {};
-    if (sheetE && sheetE.getLastRow() > 1) {
-      sheetE.getRange(2, 1, sheetE.getLastRow() - 1, 8).getValues().forEach(row => {
-        if (!row[0]) return;
-        if (String(row[COL_EST_PROGRAMA - 1] || '').trim() !== gCarrera) return;
-        if (String(row[COL_EST_GRADO    - 1] || '').trim() !== gGrado)   return;
-        if (String(row[COL_EST_SECCION  - 1] || '').trim() !== gSeccion) return;
-        grupoIds[String(row[0]).trim()] = true;
-      });
-    }
-
-    // Una pasada por la hoja Asistencia: registros propios del estudiante
-    // + fechas en que el grupo tuvo clase
-    const misRegistros = {};  // fecha -> registro del estudiante
-    const fechasGrupo  = {};  // fecha -> true (algún compañero tiene registro)
-    if (sheetA && sheetA.getLastRow() > 1) {
-      sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(row => {
-        const f = row[COL_ASIST_FECHA - 1];
-        if (!f) return;
-        const rid = String(row[COL_ASIST_ID - 1] || '').trim();
-        if (!grupoIds[rid] && rid !== idStr) return;
-        const fStr = _toDateStr(f);
-        fechasGrupo[fStr] = true;
-        if (rid === idStr) {
-          const hora = row[COL_ASIST_HORA - 1];
-          misRegistros[fStr] = {
-            fecha:   fStr,
-            hora:    hora instanceof Date ? Utilities.formatDate(hora, TZ, 'HH:mm') : String(hora || '').substring(0, 5),
-            materia: String(row[COL_ASIST_MATERIA - 1] || ''),
-            grado:   String(row[COL_ASIST_GRADO   - 1] || ''),
-            seccion: String(row[COL_ASIST_SECCION - 1] || ''),
-            obs:     String(row[COL_ASIST_OBS     - 1] || '')
-          };
-        }
-      });
-    }
-
-    // Historial completo: un renglón por cada día de clase del grupo.
-    // Si el estudiante no tiene registro ese día, se marca Ausente.
     const registros = [];
     const porMes    = {};
-    Object.keys(fechasGrupo).forEach(fStr => {
-      const reg = misRegistros[fStr] || {
-        fecha: fStr, hora: '', materia: '—',
-        grado: gGrado, seccion: gSeccion, obs: 'Ausente'
-      };
-      registros.push(reg);
-      const mes = fStr.substring(0, 7);
-      if (!porMes[mes]) porMes[mes] = { total: 0, presentes: 0, puntuales: 0, tarde: 0, ausentes: 0 };
-      porMes[mes].total++;
-      if      (reg.obs === 'Puntual') { porMes[mes].presentes++; porMes[mes].puntuales++; }
-      else if (reg.obs === 'Tarde')   { porMes[mes].presentes++; porMes[mes].tarde++;     }
-      else                            { porMes[mes].ausentes++;                           }
-    });
+
+    if (sheetA && sheetA.getLastRow() > 1) {
+      sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(row => {
+        if (String(row[COL_ASIST_ID - 1] || '').trim() !== idStr) return;
+        const f = row[COL_ASIST_FECHA - 1];
+        if (!f) return;
+        const fStr = _toDateStr(f);
+        const mes  = fStr.substring(0, 7);
+        const obs  = String(row[COL_ASIST_OBS - 1] || '');
+        const hora = row[COL_ASIST_HORA - 1];
+
+        registros.push({
+          fecha:   fStr,
+          hora:    hora instanceof Date ? Utilities.formatDate(hora, TZ, 'HH:mm') : String(hora || '').substring(0, 5),
+          materia: String(row[COL_ASIST_MATERIA - 1] || ''),
+          grado:   String(row[COL_ASIST_GRADO   - 1] || ''),
+          seccion: String(row[COL_ASIST_SECCION - 1] || ''),
+          obs:     obs
+        });
+
+        if (!porMes[mes]) porMes[mes] = { total: 0, presentes: 0, puntuales: 0, tarde: 0, ausentes: 0 };
+        porMes[mes].total++;
+        if      (obs === 'Puntual') { porMes[mes].presentes++; porMes[mes].puntuales++; }
+        else if (obs === 'Tarde')   { porMes[mes].presentes++; porMes[mes].tarde++;     }
+        else                        { porMes[mes].ausentes++;                           }
+      });
+    }
 
     registros.sort((a, b) => b.fecha.localeCompare(a.fecha));
 
-    const total     = registros.length; // días de clase del grupo
+    const total     = registros.length; // registros del estudiante en la hoja
     const puntuales = registros.filter(r => r.obs === 'Puntual').length;
     const tarde     = registros.filter(r => r.obs === 'Tarde').length;
     const presentes = puntuales + tarde;
-    const ausentes  = total - presentes;
+    const ausentes  = registros.filter(r => r.obs === 'Ausente').length;
     const pct       = total > 0 ? Math.round(presentes / total * 100) : 0;
 
     return {
@@ -800,13 +770,14 @@ function obtenerInformeAsistencia(carrera, grado, seccion, fechaInicio, fechaFin
           grado:    eGrado,
           seccion:  eSeccion,
           sexo:     String(row[COL_EST_SEXO - 1] || '').trim(),
-          puntuales: 0, tarde: 0
+          puntuales: 0, tarde: 0, ausentes: 0
         };
       });
     }
 
-    // Recorrer asistencia del rango; contar presencias por estudiante y
-    // reunir las fechas en que el grupo tuvo clase
+    // Recorrer asistencia del rango. Criterio de ausencias: SOLO cuentan
+    // las filas marcadas 'Ausente' explícitamente en la hoja; los días sin
+    // registro no cuentan.
     const fechasClase = {};
     if (sheetA && sheetA.getLastRow() > 1) {
       sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(row => {
@@ -821,34 +792,33 @@ function obtenerInformeAsistencia(carrera, grado, seccion, fechaInicio, fechaFin
         const obs = String(row[COL_ASIST_OBS - 1] || '');
         if      (obs === 'Puntual') est.puntuales++;
         else if (obs === 'Tarde')   est.tarde++;
-        // 'Ausente' explícito no suma presencia; la ausencia se calcula abajo
+        else if (obs === 'Ausente') est.ausentes++;
       });
     }
 
-    // Días en que el grupo tuvo clase dentro del rango
+    // Días en que el grupo tuvo clase dentro del rango (informativo)
     const dias = Object.keys(fechasClase).length;
 
     const lista = Object.keys(estudiantes).map(k => {
       const e = estudiantes[k];
       const presentes = e.puntuales + e.tarde;
-      const ausentes  = Math.max(0, dias - presentes);
-      const pct       = dias > 0 ? Math.round(presentes / dias * 100) : 0;
+      const totalReg  = presentes + e.ausentes; // registros del estudiante
+      const pct       = totalReg > 0 ? Math.round(presentes / totalReg * 100) : 0;
       return {
         id: e.id, nombre: e.nombre, programa: e.programa,
         grado: e.grado, seccion: e.seccion, sexo: e.sexo,
         puntuales: e.puntuales, tarde: e.tarde,
-        presentes, ausentes, pct
+        presentes, ausentes: e.ausentes, pct
       };
     });
     lista.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
     // Totales del grupo
-    let tPuntuales = 0, tTarde = 0;
-    lista.forEach(e => { tPuntuales += e.puntuales; tTarde += e.tarde; });
+    let tPuntuales = 0, tTarde = 0, tAusencias = 0;
+    lista.forEach(e => { tPuntuales += e.puntuales; tTarde += e.tarde; tAusencias += e.ausentes; });
     const tPresencias = tPuntuales + tTarde;
-    const tEsperado   = dias * lista.length;
-    const tAusencias  = Math.max(0, tEsperado - tPresencias);
-    const pctGrupo    = tEsperado > 0 ? Math.round(tPresencias / tEsperado * 100) : 0;
+    const tRegistros  = tPresencias + tAusencias;
+    const pctGrupo    = tRegistros > 0 ? Math.round(tPresencias / tRegistros * 100) : 0;
 
     return {
       ok: true,
