@@ -124,6 +124,8 @@
           onclick="cambiarTab('periodo',this)">Por Período</button>
         <button class="tab-btn flex-shrink-0 px-4 sm:px-5 py-2.5 border-0 bg-transparent cursor-pointer text-xs sm:text-sm font-semibold text-gray-500 border-b-[3px] border-transparent -mb-0.5 transition-colors"
           onclick="cambiarTab('estudiantes',this)">Por Estudiante</button>
+        <button class="tab-btn flex-shrink-0 px-4 sm:px-5 py-2.5 border-0 bg-transparent cursor-pointer text-xs sm:text-sm font-semibold text-gray-500 border-b-[3px] border-transparent -mb-0.5 transition-colors"
+          onclick="cambiarTab('informe',this)">📑 Informe</button>
       </div>
 
       <!-- TAB: HOY -->
@@ -209,6 +211,43 @@
             <div class="p-4" id="det-historial"><div class="empty-state">Sin datos</div></div>
           </div>
         </div>
+      </div>
+
+      <!-- TAB: INFORME POR GRUPO -->
+      <div class="tab-content" id="tab-informe" style="display:none">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4 items-end">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Carrera</label>
+            <select id="inf-carrera" class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white">
+              <option value="Todos">Todas</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Grado</label>
+            <select id="inf-grado" class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white">
+              <option value="Todos">Todos</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Sección</label>
+            <select id="inf-seccion" class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white">
+              <option value="Todos">Todas</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Desde</label>
+            <input type="date" id="inf-inicio" class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Hasta</label>
+            <input type="date" id="inf-fin" class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
+          </div>
+          <button onclick="generarInforme()"
+            class="flex items-center justify-center gap-1.5 px-4 py-2 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-xl text-sm font-semibold cursor-pointer border-0 transition-colors">
+            📑 Generar
+          </button>
+        </div>
+        <div id="informe-body"><div class="empty-state">Selecciona el grupo y el rango de fechas, luego presiona Generar</div></div>
       </div>
 
     </div>
@@ -538,6 +577,7 @@
 
   // ── Pestañas ──
   let estudiantesYaCargados = false;
+  let informeYaIniciado     = false;
   function cambiarTab(nombre, btn) {
     tabActiva = nombre;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -549,6 +589,131 @@
       estudiantesYaCargados = true;
       cargarListaEstudiantes();
     }
+    if (nombre === 'informe' && !informeYaIniciado) {
+      informeYaIniciado = true;
+      iniciarInforme();
+    }
+  }
+
+  // ── Informe por grupo ──
+  let informeActual = null;
+
+  function iniciarInforme() {
+    // Fechas por defecto: del 1 del mes actual a hoy
+    const hoy = fechaGuatemala();
+    document.getElementById('inf-inicio').value = hoy.substring(0, 8) + '01';
+    document.getElementById('inf-fin').value    = hoy;
+    // Poblar filtros de Carrera / Grado / Sección
+    google.script.run
+      .withSuccessHandler(d => {
+        if (!d) return;
+        _poblarSelectInforme('inf-carrera', d.carreras);
+        _poblarSelectInforme('inf-grado',   d.grados);
+        _poblarSelectInforme('inf-seccion', d.secciones);
+      })
+      .obtenerFiltrosDisponibles();
+  }
+
+  function _poblarSelectInforme(id, valores) {
+    const sel = document.getElementById(id);
+    (valores || []).forEach(v => {
+      const op = document.createElement('option');
+      op.value = v; op.textContent = v;
+      sel.appendChild(op);
+    });
+  }
+
+  function generarInforme() {
+    const carrera = document.getElementById('inf-carrera').value;
+    const grado   = document.getElementById('inf-grado').value;
+    const seccion = document.getElementById('inf-seccion').value;
+    const inicio  = document.getElementById('inf-inicio').value;
+    const fin     = document.getElementById('inf-fin').value;
+    if (!inicio || !fin) { alert('Selecciona el rango de fechas.'); return; }
+    const cont = document.getElementById('informe-body');
+    cont.innerHTML = '<div class="spinner"></div>';
+    google.script.run
+      .withSuccessHandler(renderInforme)
+      .withFailureHandler(err => {
+        cont.innerHTML = '<div class="empty-state">Error al generar el informe: ' + (err && err.message ? err.message : err) + '</div>';
+      })
+      .obtenerInformeAsistencia(carrera, grado, seccion, inicio, fin);
+  }
+
+  function renderInforme(r) {
+    const cont = document.getElementById('informe-body');
+    if (!r || !r.ok) {
+      cont.innerHTML = '<div class="empty-state">❌ ' + (r && r.errmsg ? r.errmsg : 'Error al generar el informe') + '</div>';
+      return;
+    }
+    informeActual = r;
+    if (r.totalEstudiantes === 0) {
+      cont.innerHTML = '<div class="empty-state">No hay estudiantes en el grupo seleccionado</div>';
+      return;
+    }
+    const pctCol = r.pct >= 80 ? '#2e7d32' : r.pct >= 60 ? '#e65100' : '#c62828';
+    const grupo  = [
+      r.carrera !== 'Todos' ? r.carrera : '',
+      r.grado   !== 'Todos' ? 'Grado ' + r.grado : '',
+      r.seccion !== 'Todos' ? 'Sec. ' + r.seccion : ''
+    ].filter(Boolean).join(' · ') || 'Todos los estudiantes';
+
+    cont.innerHTML = `
+      <div class="bg-[#e8f0fe] rounded-2xl p-4 mb-4">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div>
+            <div class="text-sm font-bold text-gray-900">${grupo}</div>
+            <div class="text-xs text-gray-600 mt-0.5">${r.fechaInicio} → ${r.fechaFin} · ${r.dias} día(s) con clase</div>
+          </div>
+          <button onclick="exportarInforme()"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-[#2e7d32] hover:bg-[#1b5e20] text-white rounded-lg text-xs font-semibold cursor-pointer border-0 transition-colors">
+            ⬇ Exportar CSV
+          </button>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div class="bg-white rounded-xl p-3 text-center"><div class="text-xl font-extrabold text-[#1a73e8]">${r.totalEstudiantes}</div><div class="text-[10px] text-gray-500 font-semibold uppercase mt-0.5">Estudiantes</div></div>
+          <div class="bg-white rounded-xl p-3 text-center"><div class="text-xl font-extrabold text-[#1a73e8]">${r.dias}</div><div class="text-[10px] text-gray-500 font-semibold uppercase mt-0.5">Días clase</div></div>
+          <div class="bg-white rounded-xl p-3 text-center"><div class="text-xl font-extrabold text-[#2e7d32]">${r.puntuales}</div><div class="text-[10px] text-gray-500 font-semibold uppercase mt-0.5">Puntuales</div></div>
+          <div class="bg-white rounded-xl p-3 text-center"><div class="text-xl font-extrabold text-[#e65100]">${r.tarde}</div><div class="text-[10px] text-gray-500 font-semibold uppercase mt-0.5">Con retraso</div></div>
+          <div class="bg-white rounded-xl p-3 text-center"><div class="text-xl font-extrabold text-[#c62828]">${r.ausencias}</div><div class="text-[10px] text-gray-500 font-semibold uppercase mt-0.5">Ausencias</div></div>
+          <div class="bg-white rounded-xl p-3 text-center"><div class="text-xl font-extrabold" style="color:${pctCol}">${r.pct}%</div><div class="text-[10px] text-gray-500 font-semibold uppercase mt-0.5">Asistencia</div></div>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+          <thead>
+            <tr>${['ID','Nombre','Carrera','Grado','Sec.','Puntuales','Tardes','Ausencias','% Asist.'].map(h =>
+              `<th class="bg-[#e8f0fe] text-[#1a73e8] px-3 py-2.5 text-left font-bold text-xs whitespace-nowrap">${h}</th>`).join('')}</tr>
+          </thead>
+          <tbody>
+            ${r.estudiantes.map(e => {
+              const c = e.pct >= 80 ? '#2e7d32' : e.pct >= 60 ? '#e65100' : '#c62828';
+              return `<tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                <td class="px-3 py-2.5 text-xs">${e.id}</td>
+                <td class="px-3 py-2.5 text-xs font-semibold">${e.nombre}</td>
+                <td class="px-3 py-2.5 text-xs">${e.programa || '—'}</td>
+                <td class="px-3 py-2.5 text-xs">${e.grado || '—'}</td>
+                <td class="px-3 py-2.5 text-xs">${e.seccion || '—'}</td>
+                <td class="px-3 py-2.5 text-xs text-center">${e.puntuales}</td>
+                <td class="px-3 py-2.5 text-xs text-center">${e.tarde}</td>
+                <td class="px-3 py-2.5 text-xs text-center">${e.ausentes}</td>
+                <td class="px-3 py-2.5 text-xs font-bold" style="color:${c}">${e.pct}%</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        <p class="text-xs text-gray-400 mt-2">${r.estudiantes.length} estudiantes en el informe</p>
+      </div>`;
+  }
+
+  function exportarInforme() {
+    if (!informeActual || !informeActual.estudiantes.length) { alert('No hay datos para exportar.'); return; }
+    const r   = informeActual;
+    const cab = ['ID','Nombre','Carrera','Grado','Sección','Días clase','Puntuales','Tardes','Ausencias','% Asistencia'];
+    const filas = r.estudiantes.map(e =>
+      [e.id, e.nombre, e.programa, e.grado, e.seccion, r.dias, e.puntuales, e.tarde, e.ausentes, e.pct + '%']);
+    const grupo = [r.carrera, r.grado, r.seccion].filter(v => v !== 'Todos').join('_') || 'todos';
+    _descargarCSV([cab, ...filas], `informe_${grupo}_${r.fechaInicio}_${r.fechaFin}.csv`);
   }
 
   // ── Exportar CSV ──

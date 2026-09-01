@@ -733,6 +733,106 @@ function obtenerAsistenciaPorFecha(fechaInicio, fechaFin) {
   return resultado;
 }
 
+/**
+ * Informe de asistencia por grupo (Carrera / Grado / Sección) en un rango
+ * de fechas. Filtros vacíos o 'Todos' = sin filtrar.
+ * Devuelve resumen del grupo + desglose por estudiante con % de asistencia.
+ */
+function obtenerInformeAsistencia(carrera, grado, seccion, fechaInicio, fechaFin) {
+  try {
+    const ss     = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) return { ok: false, errmsg: 'Spreadsheet no disponible' };
+    const sheetE = ss.getSheetByName(SHEET_ESTUDIANTES);
+    const sheetA = ss.getSheetByName(SHEET_ASISTENCIA);
+
+    // Estudiantes activos del grupo seleccionado
+    const estudiantes = {};
+    if (sheetE && sheetE.getLastRow() > 1) {
+      sheetE.getRange(2, 1, sheetE.getLastRow() - 1, 8).getValues().forEach(row => {
+        if (!row[0]) return;
+        if ((row[COL_EST_ESTADO - 1] || '').toString().toLowerCase() === 'inactivo') return;
+        const eCarrera = String(row[COL_EST_PROGRAMA - 1] || '').trim();
+        const eGrado   = String(row[COL_EST_GRADO    - 1] || '').trim();
+        const eSeccion = String(row[COL_EST_SECCION  - 1] || '').trim();
+        if (carrera && carrera !== 'Todos' && eCarrera !== carrera) return;
+        if (grado   && grado   !== 'Todos' && eGrado   !== grado)   return;
+        if (seccion && seccion !== 'Todos' && eSeccion !== seccion) return;
+        const id = String(row[0]).trim();
+        estudiantes[id] = {
+          id: id,
+          nombre:   String(row[COL_EST_NOMBRE - 1] || ''),
+          programa: eCarrera,
+          grado:    eGrado,
+          seccion:  eSeccion,
+          sexo:     String(row[COL_EST_SEXO - 1] || '').trim(),
+          puntuales: 0, tarde: 0
+        };
+      });
+    }
+
+    // Recorrer asistencia del rango; contar presencias por estudiante y
+    // reunir las fechas en que el grupo tuvo clase
+    const fechasClase = {};
+    if (sheetA && sheetA.getLastRow() > 1) {
+      sheetA.getRange(2, 1, sheetA.getLastRow() - 1, NUM_COLS_ASIST).getValues().forEach(row => {
+        const f = row[COL_ASIST_FECHA - 1];
+        if (!f) return;
+        const fStr = _toDateStr(f);
+        if (fStr < fechaInicio || fStr > fechaFin) return;
+        const id  = String(row[COL_ASIST_ID - 1] || '').trim();
+        const est = estudiantes[id];
+        if (!est) return;
+        fechasClase[fStr] = true;
+        const obs = String(row[COL_ASIST_OBS - 1] || '');
+        if      (obs === 'Puntual') est.puntuales++;
+        else if (obs === 'Tarde')   est.tarde++;
+        // 'Ausente' explícito no suma presencia; la ausencia se calcula abajo
+      });
+    }
+
+    // Días en que el grupo tuvo clase dentro del rango
+    const dias = Object.keys(fechasClase).length;
+
+    const lista = Object.keys(estudiantes).map(k => {
+      const e = estudiantes[k];
+      const presentes = e.puntuales + e.tarde;
+      const ausentes  = Math.max(0, dias - presentes);
+      const pct       = dias > 0 ? Math.round(presentes / dias * 100) : 0;
+      return {
+        id: e.id, nombre: e.nombre, programa: e.programa,
+        grado: e.grado, seccion: e.seccion, sexo: e.sexo,
+        puntuales: e.puntuales, tarde: e.tarde,
+        presentes, ausentes, pct
+      };
+    });
+    lista.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    // Totales del grupo
+    let tPuntuales = 0, tTarde = 0;
+    lista.forEach(e => { tPuntuales += e.puntuales; tTarde += e.tarde; });
+    const tPresencias = tPuntuales + tTarde;
+    const tEsperado   = dias * lista.length;
+    const tAusencias  = Math.max(0, tEsperado - tPresencias);
+    const pctGrupo    = tEsperado > 0 ? Math.round(tPresencias / tEsperado * 100) : 0;
+
+    return {
+      ok: true,
+      carrera: carrera || 'Todos', grado: grado || 'Todos', seccion: seccion || 'Todos',
+      fechaInicio, fechaFin,
+      dias,
+      totalEstudiantes: lista.length,
+      puntuales:  tPuntuales,
+      tarde:      tTarde,
+      presencias: tPresencias,
+      ausencias:  tAusencias,
+      pct:        pctGrupo,
+      estudiantes: lista
+    };
+  } catch (err) {
+    return { ok: false, errmsg: err.message };
+  }
+}
+
 // ------------------------------------------------------------
 // CONFIGURACIÓN
 // ------------------------------------------------------------

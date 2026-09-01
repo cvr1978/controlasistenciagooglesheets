@@ -66,9 +66,10 @@
             class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
         </div>
         <div class="lg:col-span-2">
-          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Programa / Curso *</label>
-          <input type="text" id="f-programa" placeholder="Ej: Ingeniería de Sistemas"
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Carrera / Programa *</label>
+          <input type="text" id="f-programa" list="dl-carreras" placeholder="Ej: Bachillerato en Computación"
             class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
+          <datalist id="dl-carreras"></datalist>
         </div>
         <div class="lg:col-span-2">
           <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Email</label>
@@ -83,14 +84,16 @@
           </select>
         </div>
         <div>
-          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Grado</label>
-          <input type="text" id="f-grado" placeholder="Ej: 10, 11, 1er año"
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Grado *</label>
+          <input type="text" id="f-grado" list="dl-grados" placeholder="Ej: 10, 11, 1er año"
             class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
+          <datalist id="dl-grados"></datalist>
         </div>
         <div>
-          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Sección</label>
-          <input type="text" id="f-seccion" placeholder="Ej: A, B, Matutina"
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Sección *</label>
+          <input type="text" id="f-seccion" list="dl-secciones" placeholder="Ej: A, B, Matutina"
             class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors">
+          <datalist id="dl-secciones"></datalist>
         </div>
         <div>
           <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Sexo</label>
@@ -136,9 +139,32 @@
       </button>
     </div>
     <div class="p-4 sm:p-5">
+      <div class="grid grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Carrera</label>
+          <select id="ft-carrera" onchange="filtrarTabla()"
+            class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Grado</label>
+          <select id="ft-grado" onchange="filtrarTabla()"
+            class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Sección</label>
+          <select id="ft-seccion" onchange="filtrarTabla()"
+            class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors bg-white">
+            <option value="">Todas</option>
+          </select>
+        </div>
+      </div>
       <div class="relative mb-4">
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm">🔍</span>
-        <input type="text" id="busqueda" placeholder="Buscar por nombre, ID o programa..."
+        <input type="text" id="busqueda" placeholder="Buscar por nombre, ID o carrera..."
           class="w-full pl-9 pr-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a73e8] transition-colors"
           oninput="filtrarTabla()">
       </div>
@@ -179,9 +205,48 @@
   function cargarEstudiantes() {
     document.getElementById('tabla-body').innerHTML = '<div class="spinner"></div>';
     google.script.run
-      .withSuccessHandler(data => { estudiantes = data; renderTabla(data); })
+      .withSuccessHandler(data => {
+        estudiantes = data;
+        poblarFiltrosGrupo(data);
+        filtrarTabla();
+      })
       .withFailureHandler(() => { document.getElementById('tabla-body').innerHTML = '<div class="text-center text-gray-400 py-10">Error al cargar estudiantes</div>'; })
       .obtenerEstudiantes();
+  }
+
+  // Llena los selects de filtro y los datalists del formulario con los
+  // valores únicos de Carrera, Grado y Sección de los estudiantes existentes
+  function poblarFiltrosGrupo(data) {
+    const uniq = campo => [...new Set(
+      (data || []).map(e => String(e[campo] == null ? '' : e[campo]).trim()).filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+
+    const carreras  = uniq('programa');
+    const grados    = uniq('grado');
+    const secciones = uniq('seccion');
+
+    const llenarSelect = (id, valores) => {
+      const sel = document.getElementById(id);
+      const actual = sel.value;
+      while (sel.options.length > 1) sel.remove(1);
+      valores.forEach(v => {
+        const op = document.createElement('option');
+        op.value = v; op.textContent = v;
+        sel.appendChild(op);
+      });
+      if ([...sel.options].some(o => o.value === actual)) sel.value = actual;
+    };
+    llenarSelect('ft-carrera', carreras);
+    llenarSelect('ft-grado',   grados);
+    llenarSelect('ft-seccion', secciones);
+
+    const llenarDatalist = (id, valores) => {
+      document.getElementById(id).innerHTML =
+        valores.map(v => `<option value="${v.replace(/"/g,'&quot;')}"></option>`).join('');
+    };
+    llenarDatalist('dl-carreras',  carreras);
+    llenarDatalist('dl-grados',    grados);
+    llenarDatalist('dl-secciones', secciones);
   }
 
   function renderTabla(data) {
@@ -202,7 +267,7 @@
             <td class="px-3 py-2.5 text-xs">
               <div class="flex items-center gap-2">
                 <div style="width:28px;height:28px;border-radius:50%;background:#1a73e8;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">
-                  ${e.nombre.charAt(0).toUpperCase()}
+                  ${String(e.nombre || '?').charAt(0).toUpperCase()}
                 </div>
                 <span class="font-medium">${e.nombre}</span>
               </div>
@@ -227,15 +292,23 @@
 
   function filtrarTabla() {
     const q = document.getElementById('busqueda').value.trim().toLowerCase();
+    const fCarrera = document.getElementById('ft-carrera').value;
+    const fGrado   = document.getElementById('ft-grado').value;
+    const fSeccion = document.getElementById('ft-seccion').value;
     // String(...) en cada campo: grado/sección/id llegan como números desde
     // la hoja de cálculo y los números no tienen .toLowerCase()
     const txt = v => String(v == null ? '' : v).toLowerCase();
-    renderTabla(!q ? estudiantes : estudiantes.filter(e =>
-      txt(e.nombre).includes(q)   ||
-      txt(e.id).includes(q)       ||
-      txt(e.programa).includes(q) ||
-      txt(e.grado).includes(q)    ||
-      txt(e.seccion).includes(q)
+    const str = v => String(v == null ? '' : v).trim();
+    renderTabla(estudiantes.filter(e =>
+      (!fCarrera || str(e.programa) === fCarrera) &&
+      (!fGrado   || str(e.grado)    === fGrado)   &&
+      (!fSeccion || str(e.seccion)  === fSeccion) &&
+      (!q ||
+        txt(e.nombre).includes(q)   ||
+        txt(e.id).includes(q)       ||
+        txt(e.programa).includes(q) ||
+        txt(e.grado).includes(q)    ||
+        txt(e.seccion).includes(q))
     ));
   }
 
@@ -267,8 +340,8 @@
       seccion: document.getElementById('f-seccion').value.trim(),
       sexo: document.getElementById('f-sexo').value
     };
-    if (!datos.id || !datos.nombre || !datos.programa) {
-      mostrarAlerta('Completa los campos obligatorios: ID, Nombre y Programa.', false); return;
+    if (!datos.id || !datos.nombre || !datos.programa || !datos.grado || !datos.seccion) {
+      mostrarAlerta('Completa los campos obligatorios: ID, Nombre, Carrera, Grado y Sección.', false); return;
     }
     const fn = modoEdicion ? 'actualizarEstudiante' : 'agregarEstudiante';
     const args = modoEdicion ? [idEdicion, datos] : [datos];
